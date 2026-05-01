@@ -40,7 +40,7 @@ export default function LoginPage() {
     <div className="min-h-screen bg-cream flex items-center justify-center">
       <div className="bg-surface rounded-2xl p-8 w-full max-w-sm shadow-xl border border-rule">
         <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-amber rounded-2xl flex items-center justify-center text-2xl font-serif font-bold text-ink mx-auto mb-4">
+          <div className="w-16 h-16 bg-amber rounded-2xl flex items-center justify-center text-2xl font-serif text-ink mx-auto mb-4">
             VB
           </div>
           <h1 className="text-2xl font-serif text-ink tracking-tight">Vegetable Boy</h1>

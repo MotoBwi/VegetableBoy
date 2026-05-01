@@ -97,6 +97,16 @@ export const reportApi = {
   getAll: () => api("/api/reports"),
 };
 
+export const settlementApi = {
+  getAll: () => api("/api/delivery-persons/settlements"),
+  create: (data) => api("/api/delivery-persons/settlements", { method: "POST", body: JSON.stringify(data) }),
+  remove: (id) => api(`/api/delivery-persons/settlements/${id}`, { method: "DELETE" }),
+};
+
+export const paymentApi = {
+  getReport: () => api("/api/delivery-persons/payments"),
+};
+
 export const dashboardApi = {
   getStats: () => api("/api/dashboard"),
 };

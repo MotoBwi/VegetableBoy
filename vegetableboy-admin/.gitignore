@@ -33,7 +33,12 @@ yarn-error.log*
 # env files (can opt-in for committing if needed)
 .env*
 
-.DS_Store
+# Claude local state
+.claude/
+
+# Graphify output
+graphify-out/
+
 # vercel
 .vercel
 

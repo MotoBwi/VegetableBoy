@@ -18,7 +18,7 @@ export async function PATCH(request, { params }) {
     const { id } = await params;
     const numId = Number(id);
     await prisma.$executeRaw`UPDATE DeliveryPerson SET active = NOT active WHERE id = ${numId}`;
-    const updated = await prisma.deliveryPerson.findUnique({ where: { id: numId }, include: { zone: true } });
+    const updated = await prisma.deliveryPerson.findUnique({ where: { id: numId }, include: { zones: true } });
     if (!updated) {
       return NextResponse.json({ error: "Delivery person not found!" }, { status: 404 });
     }

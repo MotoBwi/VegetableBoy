@@ -2,7 +2,19 @@ import { NextResponse } from "next/server";
 import { verifyToken } from "./lib/jwt";
 import { checkApiRateLimit } from "./lib/apiRateLimit";
 
-const PUBLIC_PATHS = ["/login", "/api/auth/login", "/api/auth/seed"];
+const PUBLIC_PATHS = [
+  "/login",
+  "/api/auth/login",
+  "/api/auth/delivery-login",
+  "/api/auth/seed",
+];
+
+// Delivery APIs handle their own Bearer token auth
+function isPublicPath(pathname) {
+  if (PUBLIC_PATHS.includes(pathname)) return true;
+  if (pathname.startsWith("/api/delivery")) return true;
+  return false;
+}
 
 function getClientIp(request) {
   return (
@@ -17,7 +29,7 @@ export async function middleware(request) {
 
   // Allow public paths, static assets, and CORS preflight OPTIONS
   if (
-    PUBLIC_PATHS.includes(pathname) ||
+    isPublicPath(pathname) ||
     pathname.startsWith("/_next") ||
     request.method === "OPTIONS"
   ) {

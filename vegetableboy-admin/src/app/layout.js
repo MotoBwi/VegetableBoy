@@ -6,12 +6,12 @@ import { Toaster } from "react-hot-toast";
 const dmSerif = DM_Serif_Display({
   weight: "400",
   subsets: ["latin"],
-  variable: "--font-serif",
+  variable: "--font-dm-serif",
 });
 
 const geistMono = Geist_Mono({
   subsets: ["latin"],
-  variable: "--font-mono",
+  variable: "--font-geist-mono",
 });
 
 export const metadata = {
@@ -21,7 +21,7 @@ export const metadata = {
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body className={`${dmSerif.variable} ${geistMono.variable} font-mono bg-cream text-ink antialiased`}>
         <div className="flex min-h-screen">
           <Sidebar />
@@ -35,7 +35,7 @@ export default function RootLayout({ children }) {
             style: {
               background: '#1A1A1A',
               color: '#F0EDE8',
-              fontFamily: 'var(--font-mono), monospace',
+              fontFamily: 'var(--font-geist-mono), monospace',
               border: '1px solid #F0EDE8',
             },
           }}

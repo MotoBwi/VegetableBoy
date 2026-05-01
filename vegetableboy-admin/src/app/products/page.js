@@ -51,12 +51,12 @@ export default function ProductsPage() {
           available: editing.available,
         });
         setProducts(prev => prev.map(p => p.id === editing.id ? updated : p));
-        toast.success(`${updated.name} updated! ✅`);
+        toast.success(`${updated.name} updated!`);
         setEditing(null);
       } else {
         const created = await productApi.create({...newProduct, available: true, price250: 0, price500: 0, price1kg: 0});
         setProducts(prev => [...prev, created]);
-        toast.success(`${created.name} added! ✅`);
+        toast.success(`${created.name} added!`);
       }
       setNewProduct({name: '', image: '', category: 'Staple'});
       setShowModal(false);
@@ -76,76 +76,76 @@ export default function ProductsPage() {
     try {
       await productApi.remove(id);
       setProducts(prev => prev.filter(p => p.id !== id));
-      toast.success('Product deleted! ✅');
+      toast.success('Product deleted!');
     } catch (err) {
       toast.error(err.message);
     }
   };
 
-  if (loading) return <div className="p-6 text-gray-500">Loading products...</div>;
+  if (loading) return <div className="p-6 text-meta font-mono">Loading products...</div>;
 
   return (
     <div className="p-6">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-black text-gray-100">Products</h1>
-          <p className="text-gray-500 text-sm mt-1">{products.length} products total</p>
+          <h1 className="text-2xl font-serif text-ink tracking-tight">Products</h1>
+          <p className="text-meta text-sm mt-1 font-mono">{products.length} products total</p>
         </div>
         <button
           onClick={() => { setEditing(null); setNewProduct({name: '', image: '', category: 'Staple'}); setShowModal(true); }}
-          className="bg-green-600 text-white px-5 py-2.5 rounded-xl font-bold text-sm hover:bg-green-700 transition-all shadow-lg shadow-green-900/20">
+          className="bg-ink text-cream px-5 py-2.5 rounded-xl font-bold text-sm hover:bg-mid transition-all font-mono tracking-wide">
           + Add Product
         </button>
       </div>
 
-      <div className="bg-gray-800 rounded-2xl shadow-sm overflow-hidden">
+      <div className="bg-surface rounded-2xl shadow-sm overflow-hidden border border-rule">
         <table className="w-full">
           <thead>
-            <tr className="bg-gray-700">
+            <tr className="bg-cream">
               {['Product', 'Category', '250g', '500g', '1kg', 'Status', 'Actions'].map(h => (
-                <th key={h} className="text-left px-5 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">{h}</th>
+                <th key={h} className="text-left px-5 py-3 text-[10px] font-bold text-meta uppercase tracking-wider font-mono">{h}</th>
               ))}
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-700">
+          <tbody className="divide-y divide-rule">
             {products.map(p => (
-              <tr key={p.id} className="hover:bg-gray-700/50 transition-colors">
+              <tr key={p.id} className="hover:bg-cream/50 transition-colors">
                 <td className="px-5 py-4">
                   <div className="flex items-center gap-3">
                     {p.image ? (
                       <img src={p.image} alt={p.name} className="w-10 h-10 rounded-xl object-cover" />
                     ) : (
-                      <div className="w-10 h-10 rounded-xl bg-gray-600 flex items-center justify-center text-sm font-bold text-gray-400">
+                      <div className="w-10 h-10 rounded-xl bg-cream flex items-center justify-center text-sm font-bold text-mid border border-rule">
                         {p.name.charAt(0)}
                       </div>
                     )}
-                    <span className="font-bold text-gray-100">{p.name}</span>
+                    <span className="font-bold text-ink font-mono">{p.name}</span>
                   </div>
                 </td>
                 <td className="px-5 py-4">
-                  <span className="text-xs text-gray-500 bg-gray-600 px-2 py-1 rounded-lg">{p.category}</span>
+                  <span className="text-[10px] text-mid bg-cream px-2 py-1 rounded-lg font-mono border border-rule">{p.category}</span>
                 </td>
-                <td className="px-5 py-4 text-sm text-gray-300">₹{p.price250}</td>
-                <td className="px-5 py-4 text-sm text-gray-300">₹{p.price500}</td>
-                <td className="px-5 py-4 text-sm text-gray-300">₹{p.price1kg}</td>
+                <td className="px-5 py-4 text-sm text-mid font-mono">Rs.{p.price250}</td>
+                <td className="px-5 py-4 text-sm text-mid font-mono">Rs.{p.price500}</td>
+                <td className="px-5 py-4 text-sm text-mid font-mono">Rs.{p.price1kg}</td>
                 <td className="px-5 py-4">
                   <button
                     onClick={() => toggleAvailable(p.id)}
-                    className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer border ${
+                    className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-[10px] font-bold transition-all cursor-pointer border font-mono ${
                       p.available
-                        ? 'bg-green-900/30 text-green-600 border-green-700 hover:bg-green-900/30'
-                        : 'bg-red-900/30 text-red-500 border-red-700 hover:bg-red-900/30'
+                        ? 'bg-cream text-ink border-rule hover:bg-cream'
+                        : 'bg-rule/50 text-mid border-rule hover:bg-rule'
                     }`}>
-                    <div className={`w-2 h-2 rounded-full ${p.available ? 'bg-green-500' : 'bg-red-500'}`} />
+                    <div className={`w-2 h-2 rounded-full ${p.available ? 'bg-amber' : 'bg-mid'}`} />
                     {p.available ? 'Available' : 'Hidden'}
                   </button>
                 </td>
                 <td className="px-5 py-4">
                   <div className="flex gap-2">
-                    <button onClick={() => handleEdit(p)} className="bg-blue-900/30 text-blue-600 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-blue-900/30 transition-all">
+                    <button onClick={() => handleEdit(p)} className="bg-cream text-ink px-3 py-1.5 rounded-lg text-[10px] font-bold hover:bg-rule transition-all font-mono border border-rule">
                       Edit
                     </button>
-                    <button onClick={() => handleDelete(p.id)} className="bg-red-900/30 text-red-500 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-red-900/30 transition-all">
+                    <button onClick={() => handleDelete(p.id)} className="bg-rule/50 text-mid px-3 py-1.5 rounded-lg text-[10px] font-bold hover:bg-rule transition-all font-mono border border-rule">
                       Delete
                     </button>
                   </div>
@@ -157,37 +157,37 @@ export default function ProductsPage() {
       </div>
 
       {showModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-gray-800 rounded-2xl p-6 w-[28rem] shadow-2xl">
-            <h2 className="text-lg font-black text-gray-100 mb-5">{editing ? 'Edit Product' : 'Add New Product'}</h2>
+        <div className="fixed inset-0 bg-ink/30 flex items-center justify-center z-50">
+          <div className="bg-surface rounded-2xl p-6 w-[28rem] shadow-2xl border border-rule">
+            <h2 className="text-lg font-serif text-ink mb-5 tracking-tight">{editing ? 'Edit Product' : 'Add New Product'}</h2>
             <div className="space-y-4">
               <div>
-                <label className="text-xs font-bold text-gray-500 mb-1 block">Product Name</label>
+                <label className="text-[10px] font-bold text-mid mb-1 block uppercase tracking-wider font-mono">Product Name</label>
                 <input
                   value={newProduct.name}
                   onChange={e => setNewProduct(p => ({...p, name: e.target.value}))}
                   placeholder="e.g. Karela"
-                  className="w-full px-4 py-2.5 border-2 border-gray-700 rounded-xl text-sm text-white outline-none focus:border-green-400 bg-gray-800"
+                  className="w-full px-4 py-2.5 border-2 border-rule rounded-xl text-sm text-ink outline-none focus:border-amber bg-cream font-mono"
                 />
               </div>
               <div>
-                <label className="text-xs font-bold text-gray-500 mb-1 block">Image URL</label>
+                <label className="text-[10px] font-bold text-mid mb-1 block uppercase tracking-wider font-mono">Image URL</label>
                 <input
                   value={newProduct.image}
                   onChange={e => setNewProduct(p => ({...p, image: e.target.value}))}
                   placeholder="https://..."
-                  className="w-full px-4 py-2.5 border-2 border-gray-700 rounded-xl text-sm text-white outline-none focus:border-green-400 bg-gray-800"
+                  className="w-full px-4 py-2.5 border-2 border-rule rounded-xl text-sm text-ink outline-none focus:border-amber bg-cream font-mono"
                 />
                 {newProduct.image && (
-                  <img src={newProduct.image} alt="Preview" className="mt-2 w-16 h-16 rounded-xl object-cover border border-gray-700" />
+                  <img src={newProduct.image} alt="Preview" className="mt-2 w-16 h-16 rounded-xl object-cover border border-rule" />
                 )}
               </div>
               <div>
-                <label className="text-xs font-bold text-gray-500 mb-1 block">Category</label>
+                <label className="text-[10px] font-bold text-mid mb-1 block uppercase tracking-wider font-mono">Category</label>
                 <select
                   value={newProduct.category}
                   onChange={e => setNewProduct(p => ({...p, category: e.target.value}))}
-                  className="w-full px-4 py-2.5 border-2 border-gray-700 rounded-xl text-sm text-white outline-none focus:border-green-400 bg-gray-800">
+                  className="w-full px-4 py-2.5 border-2 border-rule rounded-xl text-sm text-ink outline-none focus:border-amber bg-cream font-mono">
                   {['Staple', 'Leafy', 'Spicy', 'Seasonal', 'Root'].map(c => (
                     <option key={c}>{c}</option>
                   ))}
@@ -197,12 +197,12 @@ export default function ProductsPage() {
             <div className="flex gap-3 mt-6">
               <button
                 onClick={() => { setShowModal(false); setEditing(null); setNewProduct({name: '', image: '', category: 'Staple'}); }}
-                className="flex-1 py-3 border-2 border-gray-700 rounded-xl text-sm font-bold text-gray-300 hover:bg-gray-700">
+                className="flex-1 py-3 border-2 border-rule rounded-xl text-sm font-bold text-mid hover:bg-rule font-mono">
                 Cancel
               </button>
               <button
                 onClick={handleAdd}
-                className="flex-1 py-3 bg-green-600 text-white rounded-xl text-sm font-bold hover:bg-green-700">
+                className="flex-1 py-3 bg-ink text-cream rounded-xl text-sm font-bold hover:bg-mid font-mono tracking-wide">
                 {editing ? 'Update Product' : 'Add Product'}
               </button>
             </div>

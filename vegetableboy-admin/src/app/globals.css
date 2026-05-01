@@ -20,8 +20,8 @@
   --color-meta: var(--meta);
   --color-surface: var(--surface);
   --color-rule: var(--rule);
-  --font-serif: var(--font-serif);
-  --font-mono: var(--font-mono);
+  --font-serif: var(--font-dm-serif), 'DM Serif Display', Georgia, serif;
+  --font-mono: var(--font-geist-mono), 'Geist Mono', ui-monospace, monospace;
 }
 
 body {

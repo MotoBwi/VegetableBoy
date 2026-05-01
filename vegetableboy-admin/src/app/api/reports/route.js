@@ -15,7 +15,6 @@ export async function GET(request) {
   if (auth) return NextResponse.json({ error: auth.error }, { status: auth.status });
 
   try {
-    // Revenue aggregations via database
     const [deliveredCashAgg, deliveredOnlineAgg, pendingAgg] = await Promise.all([
       prisma.order.aggregate({
         where: { status: "delivered", payment: "cash" },
@@ -36,7 +35,6 @@ export async function GET(request) {
     const totalOnline = deliveredOnlineAgg._sum.total || 0;
     const pendingRevenue = pendingAgg._sum.total || 0;
 
-    // Sales trend (last 7 days) — database grouped by date
     const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
     const salesTrend = [];
     const today = new Date();
@@ -50,7 +48,6 @@ export async function GET(request) {
       dayStartOffsets.push({ dayName: days[d.getDay()], dayStart, dayEnd });
     }
 
-    // Use Prisma raw for date filtering in MySQL
     for (const { dayName, dayStart, dayEnd } of dayStartOffsets) {
       const agg = await prisma.order.aggregate({
         where: {
@@ -62,13 +59,11 @@ export async function GET(request) {
       salesTrend.push({ day: dayName, sales: agg._sum.total || 0 });
     }
 
-    // Payment breakdown
     const paymentData = [
       { name: "Cash", value: totalCash },
       { name: "Online", value: totalOnline },
     ];
 
-    // Zone revenue via groupBy
     const zoneRevenueRaw = await prisma.order.groupBy({
       by: ["zoneId"],
       where: { status: "delivered" },
@@ -84,26 +79,29 @@ export async function GET(request) {
       orders: z._count.id || 0,
     }));
 
-    // Delivery performance via groupBy
     const deliveryStatsRaw = await prisma.order.groupBy({
       by: ["zoneId", "status"],
       _count: { id: true },
     });
 
-    const persons = await prisma.deliveryPerson.findMany({ include: { zone: true } });
+    const persons = await prisma.deliveryPerson.findMany({ include: { zones: true } });
     const zoneStats = new Map();
     for (const stat of deliveryStatsRaw) {
       const key = `${stat.zoneId}-${stat.status}`;
       zoneStats.set(key, stat._count.id);
     }
 
-    const deliveryPerf = persons.map((dp) => ({
-      name: dp.name.split(" ")[0],
-      delivered: zoneStats.get(`${dp.zoneId}-delivered`) || 0,
-      pending: zoneStats.get(`${dp.zoneId}-pending`) || 0,
-    }));
+    const deliveryPerf = persons.map((dp) => {
+      const zoneIds = dp.zones.map((z) => z.id);
+      const deliveredCount = zoneIds.reduce((sum, zid) => sum + (zoneStats.get(`${zid}-delivered`) || 0), 0);
+      const pendingCount = zoneIds.reduce((sum, zid) => sum + (zoneStats.get(`${zid}-pending`) || 0), 0);
+      return {
+        name: dp.name.split(" ")[0],
+        delivered: deliveredCount,
+        pending: pendingCount,
+      };
+    });
 
-    // Top products — limit to 20 most ordered
     const topProductsRaw = await prisma.orderItem.groupBy({
       by: ["productId"],
       _count: { id: true },
@@ -138,6 +136,7 @@ export async function GET(request) {
       zoneRevenue,
       deliveryPerf,
       topProducts,
+      deliveredOrders: await prisma.order.count({ where: { status: "delivered" } }),
     });
   } catch (error) {
     console.error("Reports error:", error);

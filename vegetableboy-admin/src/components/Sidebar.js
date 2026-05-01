@@ -12,6 +12,7 @@ const NAV = [
   {href: '/products', icon: 'Pd', label: 'Products'},
   {href: '/users', icon: 'Us', label: 'Users'},
   {href: '/delivery', icon: 'Dl', label: 'Delivery'},
+  {href: '/delivery-payments', icon: 'Py', label: 'Payments'},
   {href: '/zones', icon: 'Zn', label: 'Zones'},
   {href: '/reports', icon: 'Rp', label: 'Reports'},
 ];
@@ -46,7 +47,7 @@ export default function Sidebar() {
             VB
           </div>
           <div>
-            <div className="text-ink font-bold text-sm font-serif tracking-wide">Vegetable Boy</div>
+            <div className="text-ink text-sm font-serif tracking-wide leading-tight">Vegetable Boy</div>
             <div className="text-meta text-[10px] tracking-[0.2em] uppercase font-mono">Admin</div>
           </div>
         </div>
@@ -55,7 +56,7 @@ export default function Sidebar() {
       {/* Nav */}
       <nav className="flex-1 p-3 space-y-0.5">
         {NAV.map(n => {
-          const isActive = pathname === n.href || pathname.startsWith(n.href + '/');
+          const isActive = pathname === n.href;
           return (
             <Link key={n.href} href={n.href}>
               <div className={`flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer transition-all ${
