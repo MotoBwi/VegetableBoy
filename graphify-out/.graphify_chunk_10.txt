@@ -1,0 +1,5 @@
+/Users/sbapan/VegetableBoy_Project/vegetableboy-admin/public/file.svg
+/Users/sbapan/VegetableBoy_Project/vegetableboy-admin/public/vercel.svg
+/Users/sbapan/VegetableBoy_Project/vegetableboy-admin/public/next.svg
+/Users/sbapan/VegetableBoy_Project/vegetableboy-admin/public/globe.svg
+/Users/sbapan/VegetableBoy_Project/vegetableboy-admin/public/window.svg
