@@ -1,4 +1,0 @@
-/Users/sbapan/VegetableBoy_Project/vegetableboy-admin/README.md
-/Users/sbapan/VegetableBoy_Project/vegetableboy-admin/docker-compose.yml
-/Users/sbapan/VegetableBoy_Project/vegetableboy-admin/AGENTS.md
-/Users/sbapan/VegetableBoy_Project/vegetableboy-admin/CLAUDE.md

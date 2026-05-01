@@ -1,0 +1,10 @@
+# Project-wide ignores
+
+# Claude local state
+.claude/
+
+# Graphify output
+graphify-out/
+
+# macOS system files
+.DS_Store
