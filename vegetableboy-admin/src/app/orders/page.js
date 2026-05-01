@@ -44,14 +44,14 @@ export default function OrdersPage() {
   });
   const consolidated = Object.values(productMap);
 
-  if (loading) return <div className="p-6 text-gray-500">Loading orders...</div>;
+  if (loading) return <div className="p-6 text-meta font-mono">Loading orders...</div>;
 
   return (
     <div className="p-6">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-black text-gray-100">Orders</h1>
-          <p className="text-gray-500 text-sm mt-1">Today's orders — {new Date().toLocaleDateString('en-GB')}</p>
+          <h1 className="text-2xl font-serif text-ink tracking-tight">Orders</h1>
+          <p className="text-meta text-sm mt-1 font-mono">Today's orders — {new Date().toLocaleDateString('en-GB')}</p>
         </div>
       </div>
 
@@ -62,19 +62,19 @@ export default function OrdersPage() {
             {id: 'perPerson', label: 'Per Person'},
           ].map(v => (
             <button key={v.id} onClick={() => setView(v.id)}
-              className={`px-4 py-2 rounded-xl font-bold text-sm transition-all ${
-                view === v.id ? 'bg-blue-600 text-white' : 'bg-gray-800 text-gray-300 border border-gray-700 hover:bg-gray-700'
+              className={`px-4 py-2 rounded-xl font-bold text-sm transition-all font-mono ${
+                view === v.id ? 'bg-ink text-cream' : 'bg-surface text-mid border border-rule hover:bg-cream'
               }`}>
               {v.label}
             </button>
           ))}
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-sm text-gray-500">Zone:</span>
+          <span className="text-sm text-meta font-mono">Zone:</span>
           {ZONES.map(z => (
             <button key={z} onClick={() => setZoneFilter(z)}
-              className={`px-3 py-1.5 rounded-full font-semibold text-xs transition-all ${
-                zoneFilter === z ? 'bg-orange-500 text-white' : 'bg-gray-800 text-gray-300 border border-gray-700 hover:bg-gray-700'
+              className={`px-3 py-1.5 rounded-full font-semibold text-[10px] transition-all font-mono ${
+                zoneFilter === z ? 'bg-ink text-cream' : 'bg-surface text-mid border border-rule hover:bg-cream'
               }`}>
               {z}
             </button>
@@ -83,42 +83,42 @@ export default function OrdersPage() {
       </div>
 
       {view === 'consolidated' && (
-        <div className="bg-gray-800 rounded-2xl shadow-sm overflow-hidden">
-          <div className="p-5 border-b border-gray-800">
-            <h2 className="font-bold text-gray-200">Total Quantities Needed Today</h2>
-            <p className="text-xs text-gray-500 mt-1">Aggregate across all customers — use for market purchase</p>
+        <div className="bg-surface rounded-2xl shadow-sm overflow-hidden border border-rule">
+          <div className="p-5 border-b border-rule">
+            <h2 className="text-ink font-serif tracking-tight">Total Quantities Needed Today</h2>
+            <p className="text-[10px] text-meta mt-1 font-mono">Aggregate across all customers — use for market purchase</p>
           </div>
           <table className="w-full">
             <thead>
-              <tr className="bg-gray-700">
+              <tr className="bg-cream">
                 {['Product', 'Orders', '250g', '500g', '1kg', 'Total Weight'].map(h => (
-                  <th key={h} className="text-left px-5 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">{h}</th>
+                  <th key={h} className="text-left px-5 py-3 text-[10px] font-bold text-meta uppercase tracking-wider font-mono">{h}</th>
                 ))}
               </tr>
             </thead>
-            <tbody>
+            <tbody className="divide-y divide-rule">
               {consolidated.map((p, i) => {
                 const totalGrams = p.q250 * 250 + p.q500 * 500 + p.q1kg * 1000;
                 return (
-                  <tr key={i} className="border-t border-gray-700 hover:bg-gray-700/50">
+                  <tr key={i} className="hover:bg-cream/50">
                     <td className="px-5 py-4">
                       <div className="flex items-center gap-2">
                         {p.image ? (
                           <img src={p.image} alt={p.name} className="w-8 h-8 rounded-lg object-cover" />
                         ) : (
-                          <div className="w-8 h-8 rounded-lg bg-gray-600 flex items-center justify-center text-xs font-bold text-gray-400">{p.name.charAt(0)}</div>
+                          <div className="w-8 h-8 rounded-lg bg-cream flex items-center justify-center text-xs font-bold text-mid border border-rule">{p.name.charAt(0)}</div>
                         )}
-                        <span className="font-bold text-gray-100">{p.name}</span>
+                        <span className="font-bold text-ink font-mono">{p.name}</span>
                       </div>
                     </td>
                     <td className="px-5 py-4">
-                      <span className="bg-blue-900/30 text-blue-600 font-bold text-sm px-2 py-1 rounded-lg">{p.orders}</span>
+                      <span className="bg-cream text-ink font-bold text-sm px-2 py-1 rounded-lg font-mono border border-rule">{p.orders}</span>
                     </td>
-                    <td className="px-5 py-4 text-sm text-gray-300">{p.q250 > 0 ? `${p.q250} pcs` : '—'}</td>
-                    <td className="px-5 py-4 text-sm text-gray-300">{p.q500 > 0 ? `${p.q500} pcs` : '—'}</td>
-                    <td className="px-5 py-4 text-sm text-gray-300">{p.q1kg > 0 ? `${p.q1kg} pcs` : '—'}</td>
+                    <td className="px-5 py-4 text-sm text-mid font-mono">{p.q250 > 0 ? `${p.q250} pcs` : '—'}</td>
+                    <td className="px-5 py-4 text-sm text-mid font-mono">{p.q500 > 0 ? `${p.q500} pcs` : '—'}</td>
+                    <td className="px-5 py-4 text-sm text-mid font-mono">{p.q1kg > 0 ? `${p.q1kg} pcs` : '—'}</td>
                     <td className="px-5 py-4">
-                      <span className="bg-green-900/30 text-green-600 font-bold text-sm px-3 py-1 rounded-lg">
+                      <span className="bg-cream text-ink font-bold text-sm px-3 py-1 rounded-lg font-mono border border-rule">
                         {(totalGrams / 1000).toFixed(2)} kg
                       </span>
                     </td>
@@ -133,38 +133,38 @@ export default function OrdersPage() {
       {view === 'perPerson' && (
         <div className="space-y-4">
           {filtered.map(order => (
-            <div key={order.id} className="bg-gray-800 rounded-2xl p-5 shadow-sm">
+            <div key={order.id} className="bg-surface rounded-2xl p-5 shadow-sm border border-rule">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-blue-900/30 rounded-full flex items-center justify-center text-lg">
+                  <div className="w-10 h-10 bg-amber/20 rounded-full flex items-center justify-center text-lg font-bold text-ink font-mono">
                     {order.user.charAt(0)}
                   </div>
                   <div>
-                    <div className="font-bold text-gray-100">{order.user}</div>
-                    <div className="text-xs text-gray-500">{order.zone} • {order.id}</div>
+                    <div className="font-bold text-ink font-mono">{order.user}</div>
+                    <div className="text-xs text-meta font-mono">{order.zone} · {order.id}</div>
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
-                  <span className={`text-xs font-bold px-3 py-1.5 rounded-full ${
-                    order.status === 'delivered' ? 'bg-green-900/30 text-green-600' :
-                    order.status === 'pending' ? 'bg-yellow-900/30 text-yellow-600' :
-                    'bg-red-900/30 text-red-600'
+                  <span className={`text-[10px] font-bold px-3 py-1.5 rounded-full font-mono ${
+                    order.status === 'delivered' ? 'bg-cream text-ink border border-rule' :
+                    order.status === 'pending' ? 'bg-amber/20 text-amber border border-amber/30' :
+                    'bg-rule text-mid border border-rule'
                   }`}>
                     {order.status === 'delivered' ? 'Delivered' : order.status === 'pending' ? 'Pending' : 'Failed'}
                   </span>
-                  <span className="font-black text-blue-600 text-lg">₹{order.total}</span>
+                  <span className="font-black text-amber text-lg font-mono">Rs.{order.total}</span>
                 </div>
               </div>
               <div className="flex gap-2 flex-wrap">
                 {order.items.map((item, i) => (
-                  <div key={i} className="bg-gray-700 rounded-xl px-3 py-2 flex items-center gap-2 text-sm">
+                  <div key={i} className="bg-cream rounded-xl px-3 py-2 flex items-center gap-2 text-sm border border-rule">
                     {item.image ? (
                       <img src={item.image} alt={item.name} className="w-6 h-6 rounded object-cover" />
                     ) : (
-                      <div className="w-6 h-6 rounded bg-gray-600 flex items-center justify-center text-xs font-bold text-gray-400">{item.name.charAt(0)}</div>
+                      <div className="w-6 h-6 rounded bg-rule flex items-center justify-center text-xs font-bold text-mid">{item.name.charAt(0)}</div>
                     )}
-                    <span className="font-semibold text-gray-200">{item.name}</span>
-                    <span className="text-gray-500">{item.variant} ×{item.qty}</span>
+                    <span className="font-semibold text-ink font-mono">{item.name}</span>
+                    <span className="text-meta font-mono">{item.variant} ×{item.qty}</span>
                   </div>
                 ))}
               </div>

@@ -6,14 +6,15 @@ import { authApi } from '@/lib/api';
 import toast from 'react-hot-toast';
 
 const NAV = [
-  {href: '/dashboard', icon: '📊', label: 'Dashboard'},
-  {href: '/orders', icon: '📦', label: 'Orders'},
-  {href: '/orders/price', icon: '💰', label: 'Set Price'},
-  {href: '/products', icon: '🥦', label: 'Products'},
-  {href: '/users', icon: '👥', label: 'Users'},
-  {href: '/delivery', icon: '🚴', label: 'Delivery'},
-  {href: '/zones', icon: '📍', label: 'Zones'},
-  {href: '/reports', icon: '📈', label: 'Reports'},
+  {href: '/dashboard', icon: 'Db', label: 'Dashboard'},
+  {href: '/orders', icon: 'Or', label: 'Orders'},
+  {href: '/orders/price', icon: 'Pr', label: 'Set Price'},
+  {href: '/products', icon: 'Pd', label: 'Products'},
+  {href: '/users', icon: 'Us', label: 'Users'},
+  {href: '/delivery', icon: 'Dl', label: 'Delivery'},
+  {href: '/delivery-payments', icon: 'Py', label: 'Payments'},
+  {href: '/zones', icon: 'Zn', label: 'Zones'},
+  {href: '/reports', icon: 'Rp', label: 'Reports'},
 ];
 
 export default function Sidebar() {
@@ -30,7 +31,7 @@ export default function Sidebar() {
   const handleLogout = async () => {
     try {
       await authApi.logout();
-      toast.success('Logout successful! 👋');
+      toast.success('Logout successful!');
       router.push('/login');
     } catch {
       toast.error('Logout failed!');
@@ -38,33 +39,33 @@ export default function Sidebar() {
   };
 
   return (
-    <div className="w-56 bg-gray-900 min-h-screen flex flex-col">
+    <div className="w-56 bg-cream min-h-screen flex flex-col border-r border-rule">
       {/* Logo */}
-      <div className="p-5 border-b border-gray-700">
+      <div className="p-5 border-b border-rule">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 bg-green-700 rounded-xl flex items-center justify-center text-xl">
-            🥦
+          <div className="w-9 h-9 bg-amber rounded-lg flex items-center justify-center text-xs font-bold text-ink tracking-wider">
+            VB
           </div>
           <div>
-            <div className="text-white font-bold text-sm">Vegetable Boy</div>
-            <div className="text-gray-500 text-xs tracking-widest">ADMIN</div>
+            <div className="text-ink text-sm font-serif tracking-wide leading-tight">Vegetable Boy</div>
+            <div className="text-meta text-[10px] tracking-[0.2em] uppercase font-mono">Admin</div>
           </div>
         </div>
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 p-3 space-y-1">
+      <nav className="flex-1 p-3 space-y-0.5">
         {NAV.map(n => {
-          const isActive = pathname === n.href || pathname.startsWith(n.href + '/');
+          const isActive = pathname === n.href;
           return (
             <Link key={n.href} href={n.href}>
-              <div className={`flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer transition-all ${
+              <div className={`flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer transition-all ${
                 isActive
-                  ? 'bg-gray-700 border-l-4 border-green-500 text-white font-bold'
-                  : 'text-gray-500 hover:bg-gray-800 hover:text-white border-l-4 border-transparent'
+                  ? 'bg-ink text-cream font-bold'
+                  : 'text-mid hover:bg-rule hover:text-ink border-l-2 border-transparent'
               }`}>
-                <span className="text-lg">{n.icon}</span>
-                <span className="text-sm">{n.label}</span>
+                <span className="text-[10px] font-mono tracking-wider w-5 text-center opacity-60">{n.icon}</span>
+                <span className="text-sm font-mono">{n.label}</span>
               </div>
             </Link>
           );
@@ -72,21 +73,21 @@ export default function Sidebar() {
       </nav>
 
       {/* Admin Info + Logout */}
-      <div className="p-4 border-t border-gray-700">
+      <div className="p-4 border-t border-rule">
         <div className="flex items-center gap-3 mb-3">
-          <div className="w-8 h-8 bg-orange-500 rounded-full flex items-center justify-center text-sm">
-            👑
+          <div className="w-8 h-8 bg-amber rounded-full flex items-center justify-center text-xs font-bold text-ink">
+            A
           </div>
           <div>
-            <div className="text-white text-sm font-bold">{adminName}</div>
-            <div className="text-gray-500 text-xs">Super Access</div>
+            <div className="text-ink text-sm font-bold font-mono">{adminName}</div>
+            <div className="text-meta text-[10px] font-mono">Super Access</div>
           </div>
         </div>
         <button
           onClick={handleLogout}
-          className="w-full py-2 bg-red-900/30 text-red-500 rounded-xl text-xs font-bold hover:bg-red-900/50 transition-all"
+          className="w-full py-2 bg-rule/50 text-ink rounded-lg text-xs font-bold hover:bg-rule transition-all font-mono tracking-wide"
         >
-          🚪 Logout
+          Logout
         </button>
       </div>
     </div>

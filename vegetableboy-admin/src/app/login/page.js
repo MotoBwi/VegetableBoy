@@ -24,7 +24,7 @@ export default function LoginPage() {
       const data = await res.json();
 
       if (res.ok) {
-        toast.success("Login successful! Welcome Admin 👑");
+        toast.success("Login successful! Welcome Admin");
         router.push("/dashboard");
       } else {
         toast.error(data.error || "Login failed!");
@@ -37,49 +37,49 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-950 flex items-center justify-center">
-      <div className="bg-gray-900 rounded-2xl p-8 w-full max-w-sm shadow-2xl border border-gray-800">
+    <div className="min-h-screen bg-cream flex items-center justify-center">
+      <div className="bg-surface rounded-2xl p-8 w-full max-w-sm shadow-xl border border-rule">
         <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-green-700 rounded-2xl flex items-center justify-center text-3xl mx-auto mb-4">
-            🥦
+          <div className="w-16 h-16 bg-amber rounded-2xl flex items-center justify-center text-2xl font-serif text-ink mx-auto mb-4">
+            VB
           </div>
-          <h1 className="text-2xl font-black text-white">Vegetable Boy</h1>
-          <p className="text-gray-500 text-sm mt-1">Admin Login</p>
+          <h1 className="text-2xl font-serif text-ink tracking-tight">Vegetable Boy</h1>
+          <p className="text-meta text-sm mt-1 font-mono">Admin Login</p>
         </div>
 
         <form onSubmit={handleLogin} className="space-y-5">
           <div>
-            <label className="text-xs font-bold text-gray-500 mb-1 block">Username</label>
+            <label className="text-[10px] font-bold text-mid mb-1 block uppercase tracking-wider font-mono">Username</label>
             <input
               type="text"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               placeholder="admin"
-              className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-xl text-sm text-white outline-none focus:border-green-500 transition-all"
+              className="w-full px-4 py-3 bg-cream border-2 border-rule rounded-xl text-sm text-ink outline-none focus:border-amber transition-all font-mono"
               required
             />
           </div>
           <div>
-            <label className="text-xs font-bold text-gray-500 mb-1 block">Password</label>
+            <label className="text-[10px] font-bold text-mid mb-1 block uppercase tracking-wider font-mono">Password</label>
             <input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
-              className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-xl text-sm text-white outline-none focus:border-green-500 transition-all"
+              className="w-full px-4 py-3 bg-cream border-2 border-rule rounded-xl text-sm text-ink outline-none focus:border-amber transition-all font-mono"
               required
             />
           </div>
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-3 bg-green-600 text-white rounded-xl text-sm font-bold hover:bg-green-700 transition-all disabled:opacity-50"
+            className="w-full py-3 bg-ink text-cream rounded-xl text-sm font-bold hover:bg-mid transition-all disabled:opacity-50 font-mono tracking-wide"
           >
-            {loading ? "⏳ Logging in..." : "🔐 Login"}
+            {loading ? "Logging in..." : "Login"}
           </button>
         </form>
 
-        <div className="mt-6 text-center text-xs text-gray-600">
+        <div className="mt-6 text-center text-xs text-meta font-mono">
           <p>First time? Create admin via seed API.</p>
         </div>
       </div>

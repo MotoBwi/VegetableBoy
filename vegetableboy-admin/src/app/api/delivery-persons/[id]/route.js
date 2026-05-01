@@ -1,3 +1,4 @@
+import bcrypt from "bcryptjs";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { verifyToken, getTokenFromCookie } from "@/lib/jwt";
@@ -17,7 +18,7 @@ export async function PUT(request, { params }) {
   try {
     const { id } = await params;
     const body = await request.json();
-    const { name, phone, image, zoneId, active } = body;
+    const { name, phone, password, image, zoneIds, active, upiId } = body;
 
     const data = {};
     if (name !== undefined) {
@@ -31,14 +32,26 @@ export async function PUT(request, { params }) {
       }
       data.phone = phone.trim();
     }
+    if (password !== undefined && password.length > 0) {
+      if (password.length < 4) {
+        return NextResponse.json({ error: "Password must be at least 4 characters!" }, { status: 400 });
+      }
+      data.password = await bcrypt.hash(password, 10);
+    }
     if (image !== undefined) data.image = image.trim().slice(0, 500);
-    if (zoneId !== undefined) data.zoneId = Number(zoneId);
+    if (upiId !== undefined) data.upiId = upiId.trim().slice(0, 100);
+    if (zoneIds !== undefined) {
+      if (!Array.isArray(zoneIds) || zoneIds.length === 0 || zoneIds.some((id) => isNaN(Number(id)))) {
+        return NextResponse.json({ error: "At least one valid zone is required!" }, { status: 400 });
+      }
+      data.zones = { set: zoneIds.map((id) => ({ id: Number(id) })) };
+    }
     if (active !== undefined) data.active = active;
 
     const person = await prisma.deliveryPerson.update({
       where: { id: Number(id) },
       data,
-      include: { zone: true },
+      include: { zones: true },
     });
     return NextResponse.json(person);
   } catch (error) {

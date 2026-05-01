@@ -1,3 +1,4 @@
+import bcrypt from "bcryptjs";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { verifyToken, getTokenFromCookie } from "@/lib/jwt";
@@ -22,7 +23,7 @@ export async function GET(request) {
 
     const [persons, total, zoneStatsRaw] = await Promise.all([
       prisma.deliveryPerson.findMany({
-        include: { zone: true },
+        include: { zones: true },
         orderBy: { id: "asc" },
         skip,
         take: limit,
@@ -39,11 +40,12 @@ export async function GET(request) {
       zoneStats.set(`${stat.zoneId}-${stat.status}`, stat._count.id);
     }
 
-    const enriched = persons.map((p) => ({
-      ...p,
-      delivered: zoneStats.get(`${p.zoneId}-delivered`) || 0,
-      pending: zoneStats.get(`${p.zoneId}-pending`) || 0,
-    }));
+    const enriched = persons.map((p) => {
+      const zoneIds = p.zones.map((z) => z.id);
+      const delivered = zoneIds.reduce((sum, zid) => sum + (zoneStats.get(`${zid}-delivered`) || 0), 0);
+      const pending = zoneIds.reduce((sum, zid) => sum + (zoneStats.get(`${zid}-pending`) || 0), 0);
+      return { ...p, delivered, pending };
+    });
 
     return NextResponse.json({ persons: enriched, total, page, limit, totalPages: Math.ceil(total / limit) });
   } catch (error) {
@@ -58,7 +60,7 @@ export async function POST(request) {
 
   try {
     const body = await request.json();
-    const { name, phone, image, zoneId, active } = body;
+    const { name, phone, password, image, zoneIds, active, upiId } = body;
 
     if (!name || typeof name !== "string" || name.trim().length === 0 || name.trim().length > 100) {
       return NextResponse.json({ error: "Name is required and must be ≤100 chars!" }, { status: 400 });
@@ -66,19 +68,26 @@ export async function POST(request) {
     if (!phone || typeof phone !== "string" || !/^\d{10}$/.test(phone.trim())) {
       return NextResponse.json({ error: "Valid 10-digit phone is required!" }, { status: 400 });
     }
-    if (!zoneId || isNaN(Number(zoneId))) {
-      return NextResponse.json({ error: "Valid zone is required!" }, { status: 400 });
+    if (!password || typeof password !== "string" || password.length < 4) {
+      return NextResponse.json({ error: "Password must be at least 4 characters!" }, { status: 400 });
     }
+    if (!Array.isArray(zoneIds) || zoneIds.length === 0 || zoneIds.some((id) => isNaN(Number(id)))) {
+      return NextResponse.json({ error: "At least one valid zone is required!" }, { status: 400 });
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
 
     const person = await prisma.deliveryPerson.create({
       data: {
         name: name.trim(),
         phone: phone.trim(),
+        password: hashedPassword,
         image: typeof image === "string" ? image.trim().slice(0, 500) : "",
-        zoneId: Number(zoneId),
+        upiId: typeof upiId === "string" ? upiId.trim().slice(0, 100) : "",
+        zones: { connect: zoneIds.map((id) => ({ id: Number(id) })) },
         active: typeof active === "boolean" ? active : true,
       },
-      include: { zone: true },
+      include: { zones: true },
     });
     return NextResponse.json({ ...person, delivered: 0, pending: 0 }, { status: 201 });
   } catch (error) {

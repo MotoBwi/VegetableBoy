@@ -53,33 +53,33 @@ export default function PricePage() {
     }
   };
 
-  if (loading) return <div className="p-6 text-gray-500">Loading products...</div>;
+  if (loading) return <div className="p-6 text-meta font-mono">Loading products...</div>;
 
   return (
     <div className="p-6">
       <div className="mb-6">
-        <h1 className="text-2xl font-black text-gray-100">Set Today's Prices</h1>
-        <p className="text-gray-500 text-sm mt-1">Market rate daalo — app auto-calculate karega aur users ko notify karega</p>
+        <h1 className="text-2xl font-serif text-ink tracking-tight">Set Today's Prices</h1>
+        <p className="text-meta text-sm mt-1 font-mono">Market rate daalo — app auto-calculate karega aur users ko notify karega</p>
       </div>
 
-      <div className="bg-orange-900/30 border border-orange-700 rounded-2xl p-4 mb-6 flex gap-3 items-start">
-        <span className="text-2xl"></span>
+      <div className="bg-amber/10 border border-amber/30 rounded-2xl p-4 mb-6 flex gap-3 items-start">
+        <span className="text-2xl text-amber font-mono">!</span>
         <div>
-          <div className="font-bold text-orange-600 text-sm">Price Setting Instructions</div>
-          <div className="text-orange-500 text-xs mt-1">
+          <div className="font-bold text-ink text-sm font-mono">Price Setting Instructions</div>
+          <div className="text-mid text-xs mt-1 font-mono">
             Har product ka price per kg daalo. App automatically 250g, 500g aur 1kg ka price calculate karega.
             Save karne ke baad saare users ko push notification jayega.
           </div>
         </div>
       </div>
 
-      <div className="bg-gray-800 rounded-2xl shadow-sm overflow-hidden mb-5">
-        <div className="p-5 border-b border-gray-800 flex justify-between items-center">
-          <h2 className="font-bold text-gray-200">Product Price Setting</h2>
-          <span className="text-xs text-gray-500">Price per kg (Rs)</span>
+      <div className="bg-surface rounded-2xl shadow-sm overflow-hidden mb-5 border border-rule">
+        <div className="p-5 border-b border-rule flex justify-between items-center">
+          <h2 className="text-ink font-serif tracking-tight">Product Price Setting</h2>
+          <span className="text-[10px] text-meta font-mono">Price per kg (Rs)</span>
         </div>
 
-        <div className="divide-y divide-gray-700">
+        <div className="divide-y divide-rule">
           {products.map(product => {
             const perKg = prices[product.id] || '';
             const p250 = calc(perKg, 250);
@@ -92,36 +92,36 @@ export default function PricePage() {
                   {product.image ? (
                     <img src={product.image} alt={product.name} className="w-12 h-12 rounded-xl object-cover" />
                   ) : (
-                    <div className="w-12 h-12 rounded-xl bg-gray-600 flex items-center justify-center text-sm font-bold text-gray-400">
+                    <div className="w-12 h-12 rounded-xl bg-cream flex items-center justify-center text-sm font-bold text-mid border border-rule">
                       {product.name.charAt(0)}
                     </div>
                   )}
                   <div>
-                    <div className="font-bold text-gray-100">{product.name}</div>
-                    <div className="text-xs text-gray-500">{product.category}</div>
+                    <div className="font-bold text-ink font-mono">{product.name}</div>
+                    <div className="text-[10px] text-meta font-mono">{product.category}</div>
                   </div>
                 </div>
 
                 <div>
-                  <label className="text-xs text-gray-500 mb-1 block">Price per kg (Rs)</label>
+                  <label className="text-[10px] text-meta mb-1 block font-mono">Price per kg (Rs)</label>
                   <input
                     type="number"
                     value={perKg}
                     onChange={e => handlePrice(product.id, e.target.value)}
                     placeholder="e.g. 80"
-                    className={`w-full px-4 py-2.5 border-2 rounded-xl text-sm font-bold text-gray-100 outline-none transition-all ${
-                      perKg ? 'border-orange-400 bg-orange-900/30' : 'border-gray-700 bg-gray-700'
+                    className={`w-full px-4 py-2.5 border-2 rounded-xl text-sm font-bold text-ink outline-none transition-all font-mono ${
+                      perKg ? 'border-amber bg-amber/10' : 'border-rule bg-cream'
                     }`}
                   />
                 </div>
 
                 <div className="flex gap-2">
                   {[['250g', p250], ['500g', p500], ['1kg', p1kg]].map(([label, val]) => (
-                    <div key={label} className={`flex-1 rounded-xl p-2 text-center border ${
-                      val ? 'bg-green-900/30 border-green-700' : 'bg-gray-700 border-gray-700'
+                    <div key={label} className={`flex-1 rounded-xl p-2 text-center border font-mono ${
+                      val ? 'bg-cream text-ink border-rule' : 'bg-cream/50 border-rule/50'
                     }`}>
-                      <div className="text-xs text-gray-500">{label}</div>
-                      <div className={`text-sm font-bold mt-1 ${val ? 'text-green-600' : 'text-gray-300'}`}>
+                      <div className="text-[10px] text-meta">{label}</div>
+                      <div className={`text-sm font-bold mt-1 ${val ? 'text-ink' : 'text-mid'}`}>
                         {val ? `Rs${val}` : '—'}
                       </div>
                     </div>
@@ -135,10 +135,10 @@ export default function PricePage() {
 
       <button
         onClick={handleSave}
-        className={`px-8 py-4 rounded-2xl font-bold text-white text-base transition-all shadow-lg ${
+        className={`px-8 py-4 rounded-2xl font-bold text-cream text-base transition-all shadow-lg font-mono tracking-wide ${
           saved
-            ? 'bg-green-600 shadow-green-900/20'
-            : 'bg-orange-500 hover:bg-orange-600 shadow-orange-900/20'
+            ? 'bg-ink'
+            : 'bg-ink hover:bg-mid'
         }`}>
         {saved ? 'Prices Saved & Users Notified!' : 'Save Prices & Notify Users'}
       </button>

@@ -15,7 +15,6 @@ export async function GET(request) {
   if (auth) return NextResponse.json({ error: auth.error }, { status: auth.status });
 
   try {
-    // Use database-level aggregations to avoid loading all orders into memory
     const [
       totalOrders,
       delivered,
@@ -39,7 +38,7 @@ export async function GET(request) {
         where: { status: "delivered", payment: "online" },
         _sum: { total: true },
       }),
-      prisma.deliveryPerson.findMany({ include: { zone: true } }),
+      prisma.deliveryPerson.findMany({ include: { zones: true } }),
       prisma.zone.findMany(),
       prisma.order.findMany({
         include: { user: true, zone: true, items: { include: { product: true } } },
@@ -48,7 +47,6 @@ export async function GET(request) {
       }),
     ]);
 
-    // Zone-level order stats computed via groupBy (efficient)
     const zoneOrderStats = await prisma.order.groupBy({
       by: ["zoneId", "status"],
       _count: { id: true },
@@ -60,13 +58,18 @@ export async function GET(request) {
       zoneStatsMap.set(key, stat._count.id);
     }
 
-    const deliveryPersons = persons.map((dp) => ({
-      id: dp.id,
-      name: dp.name,
-      zone: dp.zone.name,
-      delivered: zoneStatsMap.get(`${dp.zoneId}-delivered`) || 0,
-      pending: zoneStatsMap.get(`${dp.zoneId}-pending`) || 0,
-    }));
+    const deliveryPersons = persons.map((dp) => {
+      const zoneIds = dp.zones.map((z) => z.id);
+      const deliveredCount = zoneIds.reduce((sum, zid) => sum + (zoneStatsMap.get(`${zid}-delivered`) || 0), 0);
+      const pendingCount = zoneIds.reduce((sum, zid) => sum + (zoneStatsMap.get(`${zid}-pending`) || 0), 0);
+      return {
+        id: dp.id,
+        name: dp.name,
+        zone: dp.zones.map((z) => z.name).join(", "),
+        delivered: deliveredCount,
+        pending: pendingCount,
+      };
+    });
 
     const recentOrders = recentOrdersRaw.map((o) => ({
       id: o.id,
