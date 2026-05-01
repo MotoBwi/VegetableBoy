@@ -1,0 +1,104 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model Admin {
+  id        Int      @id @default(autoincrement())
+  username  String   @unique
+  password  String
+  createdAt DateTime @default(now())
+}
+
+model Zone {
+  id              Int               @id @default(autoincrement())
+  name            String            @unique
+  area            String
+  users           User[]
+  deliveryPersons DeliveryPerson[]
+  orders          Order[]
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+}
+
+model DeliveryPerson {
+  id        Int      @id @default(autoincrement())
+  name      String
+  phone     String   @unique
+  image     String   @default("")
+  zoneId    Int
+  zone      Zone     @relation(fields: [zoneId], references: [id])
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  name      String
+  phone     String   @unique
+  image     String   @default("")
+  zoneId    Int
+  zone      Zone     @relation(fields: [zoneId], references: [id])
+  block     String
+  building  String
+  flat      String
+  active    Boolean  @default(true)
+  orders    Order[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Product {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique
+  image     String   @default("")
+  category  String
+  available Boolean  @default(true)
+  price250  Int      @default(0)
+  price500  Int      @default(0)
+  price1kg  Int      @default(0)
+  orderItems OrderItem[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Order {
+  id        String    @id
+  userId    Int
+  user      User      @relation(fields: [userId], references: [id])
+  zoneId    Int
+  zone      Zone      @relation(fields: [zoneId], references: [id])
+  total     Int
+  status    OrderStatus @default(pending)
+  payment   PaymentType?
+  items     OrderItem[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model OrderItem {
+  id        Int      @id @default(autoincrement())
+  orderId   String
+  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId Int
+  product   Product  @relation(fields: [productId], references: [id])
+  variant   String   // 250g | 500g | 1kg
+  qty       Int
+  createdAt DateTime @default(now())
+}
+
+enum OrderStatus {
+  pending
+  delivered
+  failed
+}
+
+enum PaymentType {
+  cash
+  online
+}
