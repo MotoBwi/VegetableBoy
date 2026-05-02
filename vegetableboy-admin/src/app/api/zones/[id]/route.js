@@ -17,7 +17,7 @@ export async function PUT(request, { params }) {
   try {
     const { id } = await params;
     const body = await request.json();
-    const { name, area } = body;
+    const { name, area, deliveryPersonIds } = body;
 
     const data = {};
     if (name !== undefined) {
@@ -31,11 +31,36 @@ export async function PUT(request, { params }) {
       data.area = trimmed;
     }
 
-    const zone = await prisma.zone.update({
-      where: { id: Number(id) },
-      data,
+    const updated = await prisma.$transaction(async (tx) => {
+      // Update zone fields
+      const zone = await tx.zone.update({
+        where: { id },
+        data,
+      });
+
+      // If delivery persons provided, replace existing joins
+      if (Array.isArray(deliveryPersonIds)) {
+        await tx.zoneDeliveryPerson.deleteMany({ where: { zoneId: id } });
+        if (deliveryPersonIds.length > 0) {
+          await tx.zoneDeliveryPerson.createMany({
+            data: deliveryPersonIds.map((dpId) => ({
+              zoneId: id,
+              deliveryPersonId: dpId,
+            })),
+          });
+        }
+      }
+
+      return tx.zone.findUnique({
+        where: { id },
+        include: {
+          _count: { select: { users: true } },
+          zoneDeliveryPersons: { include: { deliveryPerson: { select: { id: true, name: true } } } },
+        },
+      });
     });
-    return NextResponse.json(zone);
+
+    return NextResponse.json(updated);
   } catch (error) {
     console.error("Update zone error:", error);
     return NextResponse.json({ error: "Failed to update zone!" }, { status: 500 });
@@ -48,7 +73,7 @@ export async function DELETE(request, { params }) {
 
   try {
     const { id } = await params;
-    await prisma.zone.delete({ where: { id: Number(id) } });
+    await prisma.zone.delete({ where: { id: id } });
     return NextResponse.json({ message: "Zone deleted!" });
   } catch (error) {
     console.error("Delete zone error:", error);

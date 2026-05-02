@@ -1,3 +1,4 @@
+import bcrypt from "bcryptjs";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { verifyToken, getTokenFromCookie } from "@/lib/jwt";
@@ -43,7 +44,7 @@ export async function POST(request) {
 
   try {
     const body = await request.json();
-    const { name, phone, image, zoneId, block, building, flat, active } = body;
+    const { name, phone, password, image, zoneId, block, building, flat, active } = body;
 
     if (!name || typeof name !== "string" || name.trim().length === 0 || name.trim().length > 100) {
       return NextResponse.json({ error: "Name is required and must be ≤100 chars!" }, { status: 400 });
@@ -51,16 +52,22 @@ export async function POST(request) {
     if (!phone || typeof phone !== "string" || !/^\d{10}$/.test(phone.trim())) {
       return NextResponse.json({ error: "Valid 10-digit phone is required!" }, { status: 400 });
     }
-    if (!zoneId || isNaN(Number(zoneId))) {
+    if (!password || typeof password !== "string" || password.length < 4) {
+      return NextResponse.json({ error: "Password must be at least 4 characters!" }, { status: 400 });
+    }
+    if (!zoneId || typeof zoneId !== "string") {
       return NextResponse.json({ error: "Valid zone is required!" }, { status: 400 });
     }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
 
     const user = await prisma.user.create({
       data: {
         name: name.trim(),
         phone: phone.trim(),
+        password: hashedPassword,
         image: typeof image === "string" ? image.trim().slice(0, 500) : "",
-        zoneId: Number(zoneId),
+        zoneId: zoneId,
         block: typeof block === "string" ? block.trim().slice(0, 50) : "",
         building: typeof building === "string" ? building.trim().slice(0, 50) : "",
         flat: typeof flat === "string" ? flat.trim().slice(0, 50) : "",

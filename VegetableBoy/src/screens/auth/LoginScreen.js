@@ -9,27 +9,38 @@ import {
   KeyboardAvoidingView,
   Platform,
   Alert,
+  ActivityIndicator,
+  Image,
 } from 'react-native';
+import {SafeAreaView} from 'react-native-safe-area-context';
 import {Colors} from '../../theme/colors';
+import {userAuthApi} from '../../services/api';
 
 export default function LoginScreen({navigation}) {
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const handleLogin = () => {
+  const handleLogin = async () => {
     if (!phone || !password) {
       Alert.alert('Error', 'Phone aur password dono bharo!');
       return;
     }
-    if (phone === '9999999999' && password === 'admin123') {
-      setLoading(true);
-      setTimeout(() => {
-        setLoading(false);
-        navigation.replace('Home');
-      }, 1000);
-    } else {
-      Alert.alert('Error', 'Wrong credentials! Use 9999999999 / admin123');
+    if (!/^\d{10}$/.test(phone.trim())) {
+      Alert.alert('Error', '10-digit phone number dalna zaroori hai!');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const data = await userAuthApi.login(phone.trim(), password);
+      if (data.user) {
+        navigation.replace('Main');
+      }
+    } catch (err) {
+      Alert.alert('Error', err.message || 'Login failed!');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -39,7 +50,7 @@ export default function LoginScreen({navigation}) {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <StatusBar backgroundColor={Colors.primary} barStyle="light-content" />
       <View style={styles.topSection}>
-        <Text style={styles.logo}>🥦</Text>
+        <Image source={require('../../assets/logo.png')} style={styles.logo} />
         <Text style={styles.appName}>Vegetable Boy</Text>
         <Text style={styles.tagline}>Fresh Vegetables, Daily Delivery</Text>
       </View>
@@ -53,6 +64,7 @@ export default function LoginScreen({navigation}) {
             placeholder="Enter your phone number"
             placeholderTextColor={Colors.textMuted}
             keyboardType="phone-pad"
+            maxLength={10}
             value={phone}
             onChangeText={setPhone}
           />
@@ -72,9 +84,11 @@ export default function LoginScreen({navigation}) {
           style={[styles.loginBtn, loading && {opacity: 0.7}]}
           onPress={handleLogin}
           disabled={loading}>
-          <Text style={styles.loginBtnText}>
-            {loading ? 'Logging in...' : 'Login →'}
-          </Text>
+          {loading ? (
+            <ActivityIndicator color={Colors.white} />
+          ) : (
+            <Text style={styles.loginBtnText}>Login →</Text>
+          )}
         </TouchableOpacity>
         <View style={styles.infoBox}>
           <Text style={styles.infoText}>
@@ -94,7 +108,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingTop: 40,
   },
-  logo: {fontSize: 72, marginBottom: 12},
+  logo: {width: 80, height: 80, marginBottom: 12, borderRadius: 16},
   appName: {
     fontSize: 28,
     fontWeight: '800',

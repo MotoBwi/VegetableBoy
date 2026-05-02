@@ -1,4 +1,4 @@
-import React, {useState} from 'react';
+import React, {useState, useEffect} from 'react';
 import {
   View,
   Text,
@@ -7,27 +7,30 @@ import {
   FlatList,
   StatusBar,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
+import RazorpayCheckout from 'react-native-razorpay';
 import {Colors} from '../../theme/colors';
-
-const PRODUCTS = [
-  {id: 1, name: 'Hari Mirch', emoji: '🌶️'},
-  {id: 2, name: 'Aloo', emoji: '🥔'},
-  {id: 3, name: 'Tamatar', emoji: '🍅'},
-  {id: 4, name: 'Palak', emoji: '🥬'},
-  {id: 5, name: 'Pyaaz', emoji: '🧅'},
-  {id: 6, name: 'Bhindi', emoji: '🫑'},
-  {id: 7, name: 'Gajar', emoji: '🥕'},
-  {id: 8, name: 'Baingan', emoji: '🍆'},
-  {id: 9, name: 'Gobhi', emoji: '🥦'},
-  {id: 10, name: 'Lauki', emoji: '🫙'},
-];
-
-const DELIVERY_CHARGE = 15;
+import {userPaymentApi, userAuthApi, productApi} from '../../services/api';
+import {RAZORPAY_KEY_ID} from '../../services/config';
 
 export default function CartScreen({navigation, route}) {
   const [cart, setCart] = useState(route.params?.cart || {});
+  const [products, setProducts] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [user, setUser] = useState(null);
+
+  useEffect(() => {
+    userAuthApi
+      .getUser()
+      .then(setUser)
+      .catch(() => {});
+    productApi
+      .getProducts()
+      .then(setProducts)
+      .catch(() => {});
+  }, []);
 
   const updateCart = (productId, variant, newQty) => {
     const key = `${productId}_${variant}`;
@@ -46,64 +49,157 @@ export default function CartScreen({navigation, route}) {
   const cartItems = Object.entries(cart)
     .map(([key, qty]) => {
       const [pid, variant] = key.split('_');
-      const product = PRODUCTS.find(p => p.id === parseInt(pid));
-      return {product, variant, qty, key};
+      return {productId: pid, variant, qty, key};
     })
-    .filter(i => i.product);
+    .filter(i => i.qty > 0);
 
   const cartCount = cartItems.reduce((a, i) => a + i.qty, 0);
 
-  const handlePlaceOrder = () => {
+  const subtotal = cartItems.reduce((sum, item) => {
+    const prod = products.find(p => p.id === item.productId);
+    if (!prod) return sum;
+    const price =
+      item.variant === '250g'
+        ? prod.price250
+        : item.variant === '500g'
+        ? prod.price500
+        : prod.price1kg;
+    return sum + (price || 0) * item.qty;
+  }, 0);
+
+  const handlePlaceOrder = async () => {
     if (cartItems.length === 0) {
-      Alert.alert('Cart Empty', 'Pehle kuch items add karo!');
+      Alert.alert('Cart Empty', 'Please add some items first!');
       return;
     }
-    Alert.alert(
-      'Order Confirm करें?',
-      `${cartItems.length} items + ₹${DELIVERY_CHARGE} delivery\n\nDelivery: Kal 8:00 AM\nCutoff: Aaj 5:00 AM`,
-      [
-        {text: 'Cancel', style: 'cancel'},
-        {
-          text: 'Place Order ✅',
-          onPress: () => {
-            navigation.navigate('Orders');
-          },
+
+    const items = cartItems.map(item => ({
+      productId: item.productId,
+      variant: item.variant,
+      qty: item.qty,
+    }));
+
+    setLoading(true);
+    try {
+      const paymentData = await userPaymentApi.createOrder(items);
+
+      const options = {
+        key: RAZORPAY_KEY_ID,
+        amount: paymentData.amount,
+        currency: paymentData.currency,
+        name: 'Vegetable Boy',
+        description: 'UPI Order Payment',
+        order_id: paymentData.razorpayOrderId,
+        prefill: {
+          contact: user?.phone || '',
+          name: user?.name || '',
         },
-      ],
-    );
+        theme: {color: Colors.primary},
+        method: {
+          upi: true,
+          card: false,
+          netbanking: false,
+          wallet: false,
+          emi: false,
+          paylater: false,
+        },
+      };
+
+      RazorpayCheckout.open(options)
+        .then(async data => {
+          try {
+            await userPaymentApi.verifyPayment({
+              razorpayOrderId: paymentData.razorpayOrderId,
+              razorpayPaymentId: data.razorpay_payment_id,
+              razorpaySignature: data.razorpay_signature,
+            });
+            setCart({});
+            if (route.params?.setCart) {
+              route.params.setCart({});
+            }
+            Alert.alert('Payment Successful', 'Your order has been placed!', [
+              {
+                text: 'View Orders',
+                onPress: () => navigation.navigate('Orders'),
+              },
+            ]);
+          } catch (err) {
+            Alert.alert('Error', err.message || 'Could not verify payment.');
+          }
+        })
+        .catch(async error => {
+          console.log('Razorpay error:', error);
+          const reason =
+            error?.description ||
+            error?.error?.description ||
+            error?.code ||
+            'Payment cancelled or failed';
+          try {
+            await userPaymentApi.recordFailure({
+              razorpayOrderId: paymentData.razorpayOrderId,
+              reason,
+            });
+          } catch {}
+          Alert.alert(
+            'Payment Failed',
+            `${reason}\n\nYour order was not placed. Please try again.`,
+            [{text: 'OK'}],
+          );
+        })
+        .finally(() => {
+          setLoading(false);
+        });
+    } catch (err) {
+      Alert.alert('Error', err.message || 'Could not initiate payment.');
+      setLoading(false);
+    }
   };
 
-  const renderItem = ({item}) => (
-    <View style={styles.cartItem}>
-      <View style={styles.itemEmoji}>
-        <Text style={styles.emojiText}>{item.product.emoji}</Text>
+  const renderItem = ({item}) => {
+    const prod = products.find(p => p.id === item.productId);
+    const price = prod
+      ? item.variant === '250g'
+        ? prod.price250
+        : item.variant === '500g'
+        ? prod.price500
+        : prod.price1kg
+      : 0;
+    const emoji = prod?.emoji || '🥗';
+    const name = prod?.name || item.productId;
+
+    return (
+      <View style={styles.cartItem}>
+        <View style={styles.itemEmoji}>
+          <Text style={styles.emojiText}>{emoji}</Text>
+        </View>
+        <View style={styles.itemInfo}>
+          <Text style={styles.itemName}>{name}</Text>
+          <Text style={styles.itemVariant}>{item.variant}</Text>
+          <Text style={styles.itemPrice}>
+            ₹{price || 0} × {item.qty} ={' '}
+            <Text style={styles.itemTotal}>₹{(price || 0) * item.qty}</Text>
+          </Text>
+        </View>
+        <View style={styles.qtyControl}>
+          <TouchableOpacity
+            style={styles.qtyBtn}
+            onPress={() =>
+              updateCart(item.productId, item.variant, item.qty - 1)
+            }>
+            <Text style={styles.qtyBtnText}>−</Text>
+          </TouchableOpacity>
+          <Text style={styles.qtyValue}>{item.qty}</Text>
+          <TouchableOpacity
+            style={[styles.qtyBtn, styles.qtyBtnGreen]}
+            onPress={() =>
+              updateCart(item.productId, item.variant, item.qty + 1)
+            }>
+            <Text style={[styles.qtyBtnText, {color: Colors.white}]}>+</Text>
+          </TouchableOpacity>
+        </View>
       </View>
-      <View style={styles.itemInfo}>
-        <Text style={styles.itemName}>{item.product.name}</Text>
-        <Text style={styles.itemVariant}>{item.variant}</Text>
-        <Text style={styles.itemPrice}>
-          Price: <Text style={styles.pending}>Pending ⏳</Text>
-        </Text>
-      </View>
-      <View style={styles.qtyControl}>
-        <TouchableOpacity
-          style={styles.qtyBtn}
-          onPress={() =>
-            updateCart(item.product.id, item.variant, item.qty - 1)
-          }>
-          <Text style={styles.qtyBtnText}>−</Text>
-        </TouchableOpacity>
-        <Text style={styles.qtyValue}>{item.qty}</Text>
-        <TouchableOpacity
-          style={[styles.qtyBtn, styles.qtyBtnGreen]}
-          onPress={() =>
-            updateCart(item.product.id, item.variant, item.qty + 1)
-          }>
-          <Text style={[styles.qtyBtnText, {color: Colors.white}]}>+</Text>
-        </TouchableOpacity>
-      </View>
-    </View>
-  );
+    );
+  };
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -124,7 +220,7 @@ export default function CartScreen({navigation, route}) {
         <View style={styles.emptyCart}>
           <Text style={styles.emptyEmoji}>🛒</Text>
           <Text style={styles.emptyTitle}>Cart is Empty!</Text>
-          <Text style={styles.emptySub}>Kuch vegetables add karo</Text>
+          <Text style={styles.emptySub}>Add some fresh vegetables</Text>
           <TouchableOpacity
             style={styles.shopBtn}
             onPress={() => navigation.goBack()}>
@@ -136,7 +232,7 @@ export default function CartScreen({navigation, route}) {
           {/* Delivery Info */}
           <View style={styles.deliveryInfo}>
             <Text style={styles.deliveryInfoText}>
-              🚚 Delivery tomorrow at 8:00 AM • Block A
+              🚚 Delivery tomorrow at 8:00 AM • {user?.block || 'Your Block'}
             </Text>
             <Text style={styles.cutoffText}>⏰ Order before 5:00 AM</Text>
           </View>
@@ -157,32 +253,32 @@ export default function CartScreen({navigation, route}) {
               <Text style={styles.summaryLabel}>
                 Subtotal ({cartCount} items)
               </Text>
-              <Text style={styles.summaryPending}>Pending ⏳</Text>
+              <Text style={styles.summaryValue}>₹{subtotal}</Text>
             </View>
             <View style={styles.summaryRow}>
               <Text style={styles.summaryLabel}>Delivery Charge</Text>
-              <Text style={styles.summaryGreen}>₹{DELIVERY_CHARGE}</Text>
+              <Text style={styles.summaryGreen}>₹15</Text>
             </View>
             <View style={styles.divider} />
             <View style={styles.summaryRow}>
               <Text style={styles.totalLabel}>Total Amount</Text>
-              <Text style={styles.totalValue}>
-                Pending + ₹{DELIVERY_CHARGE}
-              </Text>
-            </View>
-            <View style={styles.notifBox}>
-              <Text style={styles.notifText}>
-                🔔 Admin price set karne ke baad notification aayega
-              </Text>
+              <Text style={styles.totalValue}>₹{subtotal + 15}</Text>
             </View>
           </View>
 
           {/* Place Order Button */}
           <View style={styles.footer}>
             <TouchableOpacity
-              style={styles.orderBtn}
-              onPress={handlePlaceOrder}>
-              <Text style={styles.orderBtnText}>Place Order ✅</Text>
+              style={[styles.orderBtn, loading && {opacity: 0.7}]}
+              onPress={handlePlaceOrder}
+              disabled={loading}>
+              {loading ? (
+                <ActivityIndicator color={Colors.white} />
+              ) : (
+                <Text style={styles.orderBtnText}>
+                  Pay with UPI — ₹{subtotal + 15} 💳
+                </Text>
+              )}
             </TouchableOpacity>
           </View>
         </>
@@ -271,7 +367,7 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   itemPrice: {fontSize: 11, color: Colors.textMuted, marginTop: 2},
-  pending: {color: Colors.accent, fontWeight: '700'},
+  itemTotal: {color: Colors.primary, fontWeight: '700'},
   qtyControl: {flexDirection: 'row', alignItems: 'center', gap: 8},
   qtyBtn: {
     width: 28,
@@ -316,18 +412,11 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   summaryLabel: {fontSize: 13, color: Colors.textMid},
-  summaryPending: {fontSize: 13, color: Colors.accent, fontWeight: '600'},
+  summaryValue: {fontSize: 13, color: Colors.text, fontWeight: '700'},
   summaryGreen: {fontSize: 13, color: Colors.primary, fontWeight: '700'},
   divider: {height: 1, backgroundColor: Colors.border, marginVertical: 10},
   totalLabel: {fontSize: 15, fontWeight: '800', color: Colors.text},
-  totalValue: {fontSize: 14, fontWeight: '800', color: Colors.accent},
-  notifBox: {
-    marginTop: 10,
-    backgroundColor: Colors.primaryPale,
-    borderRadius: 8,
-    padding: 10,
-  },
-  notifText: {fontSize: 11, color: Colors.primary, textAlign: 'center'},
+  totalValue: {fontSize: 15, fontWeight: '800', color: Colors.primary},
   footer: {
     padding: 12,
     backgroundColor: Colors.white,

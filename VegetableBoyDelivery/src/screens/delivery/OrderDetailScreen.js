@@ -27,27 +27,23 @@ export default function OrderDetailScreen({navigation, route}) {
   }
 
   const handleFailed = async () => {
-    Alert.alert(
-      'Mark as Failed?',
-      `Kya ${order.name} ka order failed mark karna hai?`,
-      [
-        {text: 'Cancel', style: 'cancel'},
-        {
-          text: 'Confirm ❌',
-          onPress: async () => {
-            setUpdating(true);
-            try {
-              await deliveryOrderApi.updateStatus(order.id, {status: 'failed'});
-              navigation.goBack();
-            } catch (err) {
-              Alert.alert('Error', err.message || 'Update failed!');
-            } finally {
-              setUpdating(false);
-            }
-          },
+    Alert.alert('Mark as Failed?', `Mark ${order.name}'s order as failed?`, [
+      {text: 'Cancel', style: 'cancel'},
+      {
+        text: 'Confirm ❌',
+        onPress: async () => {
+          setUpdating(true);
+          try {
+            await deliveryOrderApi.updateStatus(order.id, {status: 'failed'});
+            navigation.goBack();
+          } catch (err) {
+            Alert.alert('Error', err.message || 'Update failed!');
+          } finally {
+            setUpdating(false);
+          }
         },
-      ],
-    );
+      },
+    ]);
   };
 
   return (
@@ -127,31 +123,8 @@ export default function OrderDetailScreen({navigation, route}) {
                   {item.variant} × {item.qty}
                 </Text>
               </View>
-              <Text style={styles.itemPrice}>₹{item.price * item.qty}</Text>
             </View>
           ))}
-        </View>
-
-        {/* Bill */}
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>💰 Bill Summary</Text>
-          <View style={styles.billRow}>
-            <Text style={styles.billLabel}>Items Total</Text>
-            <Text style={styles.billValue}>₹{order.subtotal}</Text>
-          </View>
-          {order.delivery > 0 && (
-            <View style={styles.billRow}>
-              <Text style={styles.billLabel}>Delivery Charge</Text>
-              <Text style={[styles.billValue, {color: Colors.green}]}>
-                ₹{order.delivery}
-              </Text>
-            </View>
-          )}
-          <View style={styles.divider} />
-          <View style={styles.billRow}>
-            <Text style={styles.totalLabel}>Total to Collect</Text>
-            <Text style={styles.totalValue}>₹{order.total}</Text>
-          </View>
         </View>
 
         {/* Action Buttons */}
@@ -159,10 +132,25 @@ export default function OrderDetailScreen({navigation, route}) {
           <View style={styles.actionSection}>
             <TouchableOpacity
               style={styles.collectBtn}
-              onPress={() => navigation.navigate('Payment', {order})}>
-              <Text style={styles.collectBtnText}>
-                💳 Collect Payment — ₹{order.total}
-              </Text>
+              onPress={async () => {
+                setUpdating(true);
+                try {
+                  await deliveryOrderApi.updateStatus(order.id, {
+                    status: 'delivered',
+                  });
+                  navigation.goBack();
+                } catch (err) {
+                  Alert.alert('Error', err.message || 'Update failed!');
+                } finally {
+                  setUpdating(false);
+                }
+              }}
+              disabled={updating}>
+              {updating ? (
+                <ActivityIndicator color={Colors.white} />
+              ) : (
+                <Text style={styles.collectBtnText}>✅ Mark as Delivered</Text>
+              )}
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.failedBtn}
@@ -183,12 +171,6 @@ export default function OrderDetailScreen({navigation, route}) {
           <View style={styles.doneBox}>
             <Text style={styles.doneEmoji}>✅</Text>
             <Text style={styles.doneTitle}>Delivered Successfully!</Text>
-            <Text style={styles.doneSub}>
-              Payment:{' '}
-              {order.payment === 'cash'
-                ? '💵 Cash Collected'
-                : '📱 Online Received'}
-            </Text>
           </View>
         )}
 
@@ -282,17 +264,6 @@ const styles = StyleSheet.create({
   itemInfo: {flex: 1},
   itemName: {fontSize: 13, fontWeight: '700', color: Colors.text},
   itemVariant: {fontSize: 11, color: Colors.textMuted, marginTop: 2},
-  itemPrice: {fontSize: 14, fontWeight: '700', color: Colors.text},
-  billRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 8,
-  },
-  billLabel: {fontSize: 13, color: Colors.textMid},
-  billValue: {fontSize: 13, color: Colors.text, fontWeight: '600'},
-  divider: {height: 1, backgroundColor: Colors.border, marginVertical: 8},
-  totalLabel: {fontSize: 15, fontWeight: '800', color: Colors.text},
-  totalValue: {fontSize: 15, fontWeight: '800', color: Colors.primary},
   actionSection: {gap: 10},
   collectBtn: {
     backgroundColor: Colors.primary,

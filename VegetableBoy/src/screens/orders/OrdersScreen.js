@@ -1,4 +1,4 @@
-import React from 'react';
+import React, {useState, useCallback} from 'react';
 import {
   View,
   Text,
@@ -6,36 +6,13 @@ import {
   FlatList,
   TouchableOpacity,
   StatusBar,
+  RefreshControl,
+  ActivityIndicator,
+  Alert,
 } from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import {Colors} from '../../theme/colors';
-
-const MOCK_ORDERS = [
-  {
-    id: 'ORD-2340',
-    date: '01 May 2026',
-    status: 'delivered',
-    items: 3,
-    total: '₹184 + ₹15',
-    payment: 'Cash',
-  },
-  {
-    id: 'ORD-2339',
-    date: '30 Apr 2026',
-    status: 'pending_price',
-    items: 2,
-    total: 'Pending ⏳',
-    payment: '-',
-  },
-  {
-    id: 'ORD-2338',
-    date: '29 Apr 2026',
-    status: 'delivered',
-    items: 4,
-    total: '₹220 + ₹15',
-    payment: 'Online',
-  },
-];
+import {userOrderApi} from '../../services/api';
 
 const statusConfig = {
   delivered: {
@@ -43,17 +20,73 @@ const statusConfig = {
     bg: Colors.primaryPale,
     color: Colors.primary,
   },
-  pending_price: {
-    label: '⏳ Price Pending',
+  pending: {
+    label: '⏳ Pending',
     bg: Colors.accentPale,
     color: Colors.accent,
   },
   failed: {label: '❌ Failed', bg: Colors.redPale, color: Colors.red},
+  payment_failed: {
+    label: '❌ Payment Failed',
+    bg: Colors.redPale,
+    color: Colors.red,
+  },
 };
 
+const DATE_RANGES = [
+  {label: 'Last 1 Month', days: 30},
+  {label: 'Last 3 Months', days: 90},
+  {label: 'All Time', days: null},
+];
+
 export default function OrdersScreen({navigation}) {
+  const [orders, setOrders] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [rangeIndex, setRangeIndex] = useState(0);
+
+  const fetchOrders = useCallback(async () => {
+    try {
+      const data = await userOrderApi.getOrders();
+      setOrders(data);
+    } catch (err) {
+      console.error('Orders fetch error:', err);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, []);
+
+  React.useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      setLoading(true);
+      fetchOrders();
+    });
+    return unsubscribe;
+  }, [navigation, fetchOrders]);
+
+  const onRefresh = () => {
+    setRefreshing(true);
+    fetchOrders();
+  };
+
+  const selectedRange = DATE_RANGES[rangeIndex];
+
+  const filteredOrders = orders.filter(order => {
+    if (!selectedRange.days) return true;
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - selectedRange.days);
+    return new Date(order.createdAt) >= cutoff;
+  });
+
+  // Sort latest to oldest
+  const sortedOrders = [...filteredOrders].sort(
+    (a, b) => new Date(b.createdAt) - new Date(a.createdAt),
+  );
+
   const renderOrder = ({item}) => {
-    const st = statusConfig[item.status];
+    const st = statusConfig[item.status] || statusConfig.pending;
+    const itemCount = item.items?.length || 0;
     return (
       <TouchableOpacity
         style={styles.orderCard}
@@ -62,7 +95,8 @@ export default function OrdersScreen({navigation}) {
           <View>
             <Text style={styles.orderId}>{item.id}</Text>
             <Text style={styles.orderDate}>
-              📅 {item.date} • {item.items} items
+              📅 {new Date(item.createdAt).toLocaleDateString('en-IN')} •{' '}
+              {itemCount} items
             </Text>
           </View>
           <View style={[styles.statusBadge, {backgroundColor: st.bg}]}>
@@ -74,10 +108,19 @@ export default function OrdersScreen({navigation}) {
         <View style={styles.divider} />
         <View style={styles.orderBottom}>
           <Text style={styles.orderTotal}>
-            Total: <Text style={styles.totalValue}>{item.total}</Text>
+            Total: <Text style={styles.totalValue}>₹{item.total}</Text>
           </Text>
           <Text style={styles.orderPayment}>
-            Payment: <Text style={styles.paymentValue}>{item.payment}</Text>
+            Payment:{' '}
+            <Text style={styles.paymentValue}>
+              {item.status === 'payment_failed'
+                ? 'Failed'
+                : item.payment === 'cash'
+                ? 'Cash'
+                : item.payment === 'online'
+                ? 'Online'
+                : '—'}
+            </Text>
           </Text>
           <Text style={styles.detailsLink}>Details →</Text>
         </View>
@@ -85,33 +128,72 @@ export default function OrdersScreen({navigation}) {
     );
   };
 
+  if (loading) {
+    return (
+      <SafeAreaView
+        style={[
+          styles.container,
+          {justifyContent: 'center', alignItems: 'center'},
+        ]}
+        edges={['top']}>
+        <ActivityIndicator size="large" color={Colors.primary} />
+        <Text
+          style={{marginTop: 12, color: Colors.textMuted, fontWeight: '600'}}>
+          Loading orders...
+        </Text>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <StatusBar backgroundColor={Colors.primary} barStyle="light-content" />
 
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity
-          onPress={() => navigation.goBack()}
-          style={styles.backBtn}>
-          <Text style={styles.backText}>←</Text>
-        </TouchableOpacity>
         <Text style={styles.headerTitle}>My Orders</Text>
+      </View>
+
+      {/* Date Range Filter */}
+      <View style={styles.filterRow}>
+        {DATE_RANGES.map((r, i) => (
+          <TouchableOpacity
+            key={r.label}
+            style={[
+              styles.filterChip,
+              rangeIndex === i && styles.filterChipActive,
+            ]}
+            onPress={() => setRangeIndex(i)}>
+            <Text
+              style={[
+                styles.filterText,
+                rangeIndex === i && styles.filterTextActive,
+              ]}>
+              {r.label}
+            </Text>
+          </TouchableOpacity>
+        ))}
       </View>
 
       {/* Stats */}
       <View style={styles.statsRow}>
         {[
-          {label: 'Total', value: MOCK_ORDERS.length, color: Colors.blue},
+          {label: 'Total', value: sortedOrders.length, color: Colors.blue},
           {
             label: 'Delivered',
-            value: MOCK_ORDERS.filter(o => o.status === 'delivered').length,
+            value: sortedOrders.filter(o => o.status === 'delivered').length,
             color: Colors.primary,
           },
           {
             label: 'Pending',
-            value: MOCK_ORDERS.filter(o => o.status === 'pending_price').length,
+            value: sortedOrders.filter(o => o.status === 'pending').length,
             color: Colors.accent,
+          },
+          {
+            label: 'Failed',
+            value: sortedOrders.filter(o => o.status === 'payment_failed')
+              .length,
+            color: Colors.red,
           },
         ].map(s => (
           <View key={s.label} style={styles.statCard}>
@@ -122,11 +204,30 @@ export default function OrdersScreen({navigation}) {
       </View>
 
       <FlatList
-        data={MOCK_ORDERS}
+        data={sortedOrders}
         renderItem={renderOrder}
         keyExtractor={item => item.id}
         contentContainerStyle={styles.list}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
+        ListEmptyComponent={
+          <View style={{alignItems: 'center', paddingVertical: 60}}>
+            <Text style={{fontSize: 48, marginBottom: 12}}>📦</Text>
+            <Text
+              style={{
+                fontSize: 16,
+                fontWeight: '700',
+                color: Colors.textMuted,
+              }}>
+              No orders in this period
+            </Text>
+            <Text style={{fontSize: 13, color: Colors.textMuted, marginTop: 4}}>
+              Try a different date range
+            </Text>
+          </View>
+        }
       />
     </SafeAreaView>
   );
@@ -141,21 +242,32 @@ const styles = StyleSheet.create({
     padding: 14,
     paddingHorizontal: 16,
   },
-  backBtn: {
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    borderRadius: 8,
-    width: 36,
-    height: 36,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  backText: {fontSize: 20, color: Colors.white, fontWeight: '700'},
   headerTitle: {
     fontSize: 17,
     fontWeight: '700',
     color: Colors.white,
-    marginLeft: 12,
   },
+  filterRow: {
+    flexDirection: 'row',
+    margin: 12,
+    marginBottom: 0,
+    gap: 8,
+  },
+  filterChip: {
+    flex: 1,
+    paddingVertical: 8,
+    borderRadius: 10,
+    alignItems: 'center',
+    backgroundColor: Colors.white,
+    borderWidth: 1.5,
+    borderColor: Colors.border,
+  },
+  filterChipActive: {
+    backgroundColor: Colors.primary,
+    borderColor: Colors.primary,
+  },
+  filterText: {fontSize: 12, fontWeight: '600', color: Colors.textMid},
+  filterTextActive: {color: Colors.white},
   statsRow: {
     flexDirection: 'row',
     margin: 12,

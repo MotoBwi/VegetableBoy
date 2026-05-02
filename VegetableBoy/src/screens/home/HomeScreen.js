@@ -1,78 +1,59 @@
-import React, {useState} from 'react';
+import React, {useState, useEffect, useCallback} from 'react';
 import {
   View,
   Text,
   StyleSheet,
   FlatList,
   TouchableOpacity,
-  TextInput,
   StatusBar,
   ScrollView,
+  ActivityIndicator,
+  RefreshControl,
+  Image,
 } from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import {Colors} from '../../theme/colors';
-
-const PRODUCTS = [
-  {
-    id: 1,
-    name: 'Hari Mirch',
-    emoji: '🌶️',
-    category: 'Spicy',
-    badge: 'Hot',
-    badgeColor: Colors.red,
-  },
-  {
-    id: 2,
-    name: 'Aloo',
-    emoji: '🥔',
-    category: 'Staple',
-    badge: 'Best Seller',
-    badgeColor: Colors.primary,
-  },
-  {id: 3, name: 'Tamatar', emoji: '🍅', category: 'Staple', badge: null},
-  {
-    id: 4,
-    name: 'Palak',
-    emoji: '🥬',
-    category: 'Leafy',
-    badge: 'Fresh',
-    badgeColor: Colors.primaryLight,
-  },
-  {id: 5, name: 'Pyaaz', emoji: '🧅', category: 'Staple', badge: null},
-  {
-    id: 6,
-    name: 'Bhindi',
-    emoji: '🫑',
-    category: 'Seasonal',
-    badge: 'Seasonal',
-    badgeColor: Colors.accent,
-  },
-  {id: 7, name: 'Gajar', emoji: '🥕', category: 'Root', badge: null},
-  {id: 8, name: 'Baingan', emoji: '🍆', category: 'Seasonal', badge: null},
-  {
-    id: 9,
-    name: 'Gobhi',
-    emoji: '🥦',
-    category: 'Seasonal',
-    badge: 'Fresh',
-    badgeColor: Colors.primaryLight,
-  },
-  {id: 10, name: 'Lauki', emoji: '🫙', category: 'Seasonal', badge: null},
-];
-
-const CATEGORIES = ['All', 'Staple', 'Leafy', 'Spicy', 'Seasonal', 'Root'];
+import {productApi, userAuthApi} from '../../services/api';
 
 export default function HomeScreen({navigation}) {
-  const [search, setSearch] = useState('');
+  const [products, setProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [activeCategory, setActiveCategory] = useState('All');
   const [cart, setCart] = useState({});
+  const [user, setUser] = useState(null);
+
+  const CATEGORIES = ['All', 'Staple', 'Leafy', 'Spicy', 'Seasonal', 'Root'];
+
+  const fetchData = useCallback(async () => {
+    try {
+      const [prods, u] = await Promise.all([
+        productApi.getProducts(),
+        userAuthApi.getUser(),
+      ]);
+      setProducts(prods);
+      setUser(u);
+    } catch (err) {
+      console.error('Home fetch error:', err);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  const onRefresh = () => {
+    setRefreshing(true);
+    fetchData();
+  };
 
   const cartCount = Object.values(cart).reduce((a, b) => a + b, 0);
 
-  const filtered = PRODUCTS.filter(p => {
-    const matchCat = activeCategory === 'All' || p.category === activeCategory;
-    const matchSearch = p.name.toLowerCase().includes(search.toLowerCase());
-    return matchCat && matchSearch;
+  const filtered = products.filter(p => {
+    return activeCategory === 'All' || p.category === activeCategory;
   });
 
   const renderProduct = ({item, index}) => {
@@ -103,7 +84,9 @@ export default function HomeScreen({navigation}) {
         <View style={styles.productInfo}>
           <Text style={styles.productName}>{item.name}</Text>
           <Text style={styles.productCategory}>{item.category}</Text>
-          <Text style={styles.productPrice}>Price set at delivery 🔔</Text>
+          <Text style={styles.productPrice}>
+            ₹{item.price250} / ₹{item.price500} / ₹{item.price1kg}
+          </Text>
           <View style={styles.variantRow}>
             {['250g', '500g', '1kg'].map(v => (
               <View key={v} style={styles.variantChip}>
@@ -116,6 +99,23 @@ export default function HomeScreen({navigation}) {
     );
   };
 
+  if (loading) {
+    return (
+      <SafeAreaView
+        style={[
+          styles.container,
+          {justifyContent: 'center', alignItems: 'center'},
+        ]}
+        edges={['top']}>
+        <ActivityIndicator size="large" color={Colors.primary} />
+        <Text
+          style={{marginTop: 12, color: Colors.textMuted, fontWeight: '600'}}>
+          Loading vegetables...
+        </Text>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <StatusBar backgroundColor={Colors.primary} barStyle="light-content" />
@@ -124,7 +124,10 @@ export default function HomeScreen({navigation}) {
       <View style={styles.header}>
         <View style={styles.headerTop}>
           <View style={styles.logoArea}>
-            <Text style={styles.logoEmoji}>🥦</Text>
+            <Image
+              source={require('../../assets/logo.png')}
+              style={styles.logoImage}
+            />
             <View>
               <Text style={styles.appName}>Vegetable Boy</Text>
               <Text style={styles.tagline}>
@@ -153,22 +156,13 @@ export default function HomeScreen({navigation}) {
 
         {/* Delivery Strip */}
         <View style={styles.deliveryStrip}>
-          <Text style={styles.deliveryStripText}>📍 Block A — Sector 4</Text>
+          <Text style={styles.deliveryStripText}>
+            📍{' '}
+            {user?.block ? `${user.block}, ${user.building}` : 'Your Address'}
+          </Text>
           <View style={styles.cutoffBadge}>
             <Text style={styles.cutoffText}>⏰ Order by 5:00 AM</Text>
           </View>
-        </View>
-
-        {/* Search */}
-        <View style={styles.searchBar}>
-          <Text style={styles.searchIcon}>🔍</Text>
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Search vegetables..."
-            placeholderTextColor={Colors.textMuted}
-            value={search}
-            onChangeText={setSearch}
-          />
         </View>
       </View>
 
@@ -213,14 +207,30 @@ export default function HomeScreen({navigation}) {
       <FlatList
         data={filtered}
         renderItem={renderProduct}
-        keyExtractor={item => item.id.toString()}
+        keyExtractor={item => item.id}
         numColumns={2}
         contentContainerStyle={styles.grid}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
         ListHeaderComponent={
           <Text style={styles.resultCount}>
             {filtered.length} vegetables available
           </Text>
+        }
+        ListEmptyComponent={
+          <View style={{alignItems: 'center', paddingVertical: 40}}>
+            <Text style={{fontSize: 40, marginBottom: 8}}>🥗</Text>
+            <Text
+              style={{
+                fontSize: 16,
+                fontWeight: '700',
+                color: Colors.textMuted,
+              }}>
+              No vegetables found
+            </Text>
+          </View>
         }
       />
 
@@ -254,7 +264,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
   },
   logoArea: {flexDirection: 'row', alignItems: 'center', gap: 8},
-  logoEmoji: {fontSize: 28},
+  logoImage: {width: 32, height: 32, borderRadius: 6},
   appName: {fontSize: 18, fontWeight: '800', color: Colors.white},
   tagline: {fontSize: 10, color: 'rgba(255,255,255,0.7)'},
   headerIcons: {flexDirection: 'row', gap: 12},
@@ -288,16 +298,6 @@ const styles = StyleSheet.create({
     padding: 4,
   },
   cutoffText: {fontSize: 10, color: Colors.white},
-  searchBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: Colors.white,
-    borderRadius: 10,
-    padding: 10,
-    gap: 8,
-  },
-  searchIcon: {fontSize: 16},
-  searchInput: {flex: 1, fontSize: 14, color: Colors.text},
   banner: {
     margin: 12,
     backgroundColor: Colors.primary,
@@ -383,7 +383,7 @@ const styles = StyleSheet.create({
   productCategory: {fontSize: 10, color: Colors.textMuted, marginTop: 1},
   productPrice: {
     fontSize: 11,
-    color: Colors.accent,
+    color: Colors.primary,
     fontWeight: '600',
     marginTop: 4,
   },

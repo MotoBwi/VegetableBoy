@@ -11,9 +11,6 @@ async function requireAuth(request) {
 }
 
 export async function GET(request) {
-  const auth = await requireAuth(request);
-  if (auth) return NextResponse.json({ error: auth.error }, { status: auth.status });
-
   try {
     const { searchParams } = new URL(request.url);
     const page = Math.max(1, parseInt(searchParams.get("page") || "1", 10));

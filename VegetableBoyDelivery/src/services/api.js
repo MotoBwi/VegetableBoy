@@ -38,8 +38,7 @@ function mapOrder(o) {
     price: item.price,
   }));
   const subtotal = items.reduce((sum, item) => sum + item.price * item.qty, 0);
-  // Backend total = items total; no separate delivery charge stored
-  const delivery = o.total - subtotal;
+  const deliveryCharge = o.deliveryCharge ?? 15;
 
   return {
     id: o.id,
@@ -48,7 +47,7 @@ function mapOrder(o) {
     phone: o.user.phone,
     items,
     subtotal,
-    delivery: delivery >= 0 ? delivery : 0,
+    delivery: deliveryCharge,
     total: o.total,
     status: o.status,
     payment: o.payment,

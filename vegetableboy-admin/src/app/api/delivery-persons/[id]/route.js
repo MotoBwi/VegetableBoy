@@ -18,7 +18,7 @@ export async function PUT(request, { params }) {
   try {
     const { id } = await params;
     const body = await request.json();
-    const { name, phone, password, image, zoneIds, active, upiId } = body;
+    const { name, phone, password, image, zoneIds, active } = body;
 
     const data = {};
     if (name !== undefined) {
@@ -39,21 +39,35 @@ export async function PUT(request, { params }) {
       data.password = await bcrypt.hash(password, 10);
     }
     if (image !== undefined) data.image = image.trim().slice(0, 500);
-    if (upiId !== undefined) data.upiId = upiId.trim().slice(0, 100);
     if (zoneIds !== undefined) {
-      if (!Array.isArray(zoneIds) || zoneIds.length === 0 || zoneIds.some((id) => isNaN(Number(id)))) {
+      if (!Array.isArray(zoneIds) || zoneIds.length === 0 || zoneIds.some((id) => !id || typeof id !== 'string')) {
         return NextResponse.json({ error: "At least one valid zone is required!" }, { status: 400 });
       }
-      data.zones = { set: zoneIds.map((id) => ({ id: Number(id) })) };
     }
     if (active !== undefined) data.active = active;
 
-    const person = await prisma.deliveryPerson.update({
-      where: { id: Number(id) },
-      data,
-      include: { zones: true },
-    });
-    return NextResponse.json(person);
+    let person;
+    if (zoneIds !== undefined) {
+      person = await prisma.$transaction(async (tx) => {
+        await tx.zoneDeliveryPerson.deleteMany({ where: { deliveryPersonId: id } });
+        await tx.zoneDeliveryPerson.createMany({
+          data: zoneIds.map((zoneId) => ({ zoneId, deliveryPersonId: id })),
+        });
+        return await tx.deliveryPerson.update({
+          where: { id: id },
+          data,
+          include: { zoneDeliveryPersons: { include: { zone: true } } },
+        });
+      });
+    } else {
+      person = await prisma.deliveryPerson.update({
+        where: { id: id },
+        data,
+        include: { zoneDeliveryPersons: { include: { zone: true } } },
+      });
+    }
+    const { password: _, ...safePerson } = person;
+    return NextResponse.json(safePerson);
   } catch (error) {
     console.error("Update delivery person error:", error);
     return NextResponse.json({ error: "Failed to update delivery person!" }, { status: 500 });
@@ -66,7 +80,7 @@ export async function DELETE(request, { params }) {
 
   try {
     const { id } = await params;
-    await prisma.deliveryPerson.delete({ where: { id: Number(id) } });
+    await prisma.deliveryPerson.delete({ where: { id: id } });
     return NextResponse.json({ message: "Delivery person deleted!" });
   } catch (error) {
     console.error("Delete delivery person error:", error);

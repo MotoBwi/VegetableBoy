@@ -24,7 +24,7 @@ export async function GET(request) {
       prisma.zone.findMany({
         include: {
           _count: { select: { users: true } },
-          deliveryPersons: { select: { name: true } },
+          zoneDeliveryPersons: { include: { deliveryPerson: { select: { id: true, name: true } } } },
         },
         orderBy: { id: "asc" },
         skip,
@@ -46,7 +46,7 @@ export async function POST(request) {
 
   try {
     const body = await request.json();
-    const { name, area } = body;
+    const { name, area, deliveryPersonIds } = body;
 
     if (!name || typeof name !== "string" || name.trim().length === 0 || name.trim().length > 50) {
       return NextResponse.json({ error: "Zone name is required and must be ≤50 chars!" }, { status: 400 });
@@ -55,12 +55,32 @@ export async function POST(request) {
       return NextResponse.json({ error: "Zone area is required and must be ≤200 chars!" }, { status: 400 });
     }
 
-    const zone = await prisma.zone.create({
-      data: {
-        name: name.trim(),
-        area: area.trim(),
-      },
+    const zone = await prisma.$transaction(async (tx) => {
+      const created = await tx.zone.create({
+        data: {
+          name: name.trim(),
+          area: area.trim(),
+        },
+      });
+
+      if (Array.isArray(deliveryPersonIds) && deliveryPersonIds.length > 0) {
+        await tx.zoneDeliveryPerson.createMany({
+          data: deliveryPersonIds.map((dpId) => ({
+            zoneId: created.id,
+            deliveryPersonId: dpId,
+          })),
+        });
+      }
+
+      return tx.zone.findUnique({
+        where: { id: created.id },
+        include: {
+          _count: { select: { users: true } },
+          zoneDeliveryPersons: { include: { deliveryPerson: { select: { id: true, name: true } } } },
+        },
+      });
     });
+
     return NextResponse.json(zone, { status: 201 });
   } catch (error) {
     console.error("Create zone error:", error);
