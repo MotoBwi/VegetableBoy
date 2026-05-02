@@ -17,7 +17,7 @@ async function requireDeliveryAuth(request) {
 
   const person = await prisma.deliveryPerson.findUnique({
     where: { id: decoded.deliveryPersonId },
-    include: { zones: true },
+    include: { zoneDeliveryPersons: { include: { zone: true } } },
   });
   if (!person) return { error: "Delivery person not found!", status: 404 };
   if (!person.active) return { error: "Account is deactivated!", status: 403 };
@@ -44,7 +44,8 @@ export async function PATCH(request, { params }) {
       return NextResponse.json({ error: "Invalid payment!" }, { status: 400 });
     }
 
-    const zoneIds = auth.person.zones.map((z) => z.id);
+    const dp = auth.person;
+    const zoneIds = dp.zoneDeliveryPersons.map((zdp) => zdp.zone).map((z) => z.id);
     const order = await prisma.order.findUnique({
       where: { id },
       include: { zone: true },
@@ -52,13 +53,22 @@ export async function PATCH(request, { params }) {
     if (!order) {
       return NextResponse.json({ error: "Order not found!" }, { status: 404 });
     }
-    if (!zoneIds.includes(order.zoneId)) {
+    // If order is assigned to another delivery person, deny access
+    if (order.deliveryPersonId && order.deliveryPersonId !== dp.id) {
+      return NextResponse.json({ error: "Order assigned to another delivery person!" }, { status: 403 });
+    }
+    // If order is unassigned, only allow updates within own zones
+    if (!order.deliveryPersonId && !zoneIds.includes(order.zoneId)) {
       return NextResponse.json({ error: "Not authorized for this order!" }, { status: 403 });
     }
 
     const data = {};
     if (status) data.status = status;
     if (payment !== undefined) data.payment = payment;
+    // If order was unassigned, auto-assign to this delivery person
+    if (!order.deliveryPersonId) {
+      data.deliveryPersonId = dp.id;
+    }
 
     const updated = await prisma.order.update({
       where: { id },
@@ -66,10 +76,18 @@ export async function PATCH(request, { params }) {
       include: {
         user: true,
         zone: true,
-        items: { include: { product: true } },
+        items: true,
       },
     });
 
+    const productIds = [...new Set(updated.items.map(i => i.productId))];
+    const products = await prisma.product.findMany({
+      where: { id: { in: productIds } },
+      select: { id: true, name: true, image: true, price250: true, price500: true, price1kg: true },
+    });
+    const productMap = new Map(products.map(p => [p.id, p]));
+
+    const deliveryCharge = updated.deliveryCharge ?? 15;
     const formatted = {
       id: updated.id,
       user: {
@@ -78,19 +96,25 @@ export async function PATCH(request, { params }) {
         address: `${updated.user.building}, ${updated.user.block}, ${updated.zone.name}`,
       },
       zone: updated.zone.name,
-      items: updated.items.map((item) => ({
-        name: item.product.name,
-        image: item.product.image,
-        variant: item.variant,
-        qty: item.qty,
-        price:
-          item.variant === "250g"
-            ? item.product.price250
-            : item.variant === "500g"
-            ? item.product.price500
-            : item.product.price1kg,
-      })),
-      total: updated.total,
+      items: updated.items.map((item) => {
+        const prod = productMap.get(item.productId);
+        return {
+          name: prod?.name || `Product ${item.productId.slice(-4)}`,
+          image: prod?.image || "",
+          variant: item.variant,
+          qty: item.qty,
+          price: prod
+            ? item.variant === "250g"
+              ? prod.price250
+              : item.variant === "500g"
+              ? prod.price500
+              : prod.price1kg
+            : 0,
+        };
+      }),
+      subtotal: updated.total,
+      deliveryCharge,
+      total: updated.total + deliveryCharge,
       status: updated.status,
       payment: updated.payment,
       createdAt: updated.createdAt,

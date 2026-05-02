@@ -15,13 +15,11 @@ import {deliveryAuthApi, deliverySelfApi} from '../../services/api';
 
 export default function ProfileScreen({navigation}) {
   const [person, setPerson] = useState(null);
-  const [stats, setStats] = useState(null);
 
   const loadData = async () => {
     try {
       const data = await deliverySelfApi.getProfile();
       setPerson(data.person);
-      setStats(data.stats);
     } catch (err) {
       Alert.alert('Error', err.message || 'Failed to load profile');
     }
@@ -34,7 +32,7 @@ export default function ProfileScreen({navigation}) {
   );
 
   const handleLogout = () => {
-    Alert.alert('Logout?', 'Kya aap app se logout karna chahte hain?', [
+    Alert.alert('Logout?', 'Are you sure you want to log out?', [
       {text: 'Cancel', style: 'cancel'},
       {
         text: 'Logout',
@@ -50,38 +48,6 @@ export default function ProfileScreen({navigation}) {
   const zoneLabel = person?.zones?.length
     ? person.zones.map(z => z.name).join(', ')
     : 'No zones assigned';
-
-  const pendingCard = stats && (
-    <View style={styles.depositCard}>
-      <Text style={styles.depositTitle}>💰 Pending Deposit</Text>
-      <View style={styles.depositRow}>
-        <View style={styles.depositItem}>
-          <Text style={styles.depositIcon}>💵</Text>
-          <Text style={styles.depositLabel}>Cash Pending</Text>
-          <Text style={[styles.depositAmount, {color: Colors.red}]}>
-            Rs.{stats.cashPending}
-          </Text>
-        </View>
-        <View style={styles.depositDivider} />
-        <View style={styles.depositItem}>
-          <Text style={styles.depositIcon}>📱</Text>
-          <Text style={styles.depositLabel}>Online Pending</Text>
-          <Text style={[styles.depositAmount, {color: Colors.red}]}>
-            Rs.{stats.onlinePending}
-          </Text>
-        </View>
-      </View>
-      <View style={styles.totalPendingBox}>
-        <Text style={styles.totalPendingLabel}>Total Pending Deposit</Text>
-        <Text style={styles.totalPendingAmount}>Rs.{stats.totalPending}</Text>
-      </View>
-      {(stats.cashPending > 0 || stats.onlinePending > 0) && (
-        <Text style={styles.depositHint}>
-          Office jaake admin ko submit karna hai
-        </Text>
-      )}
-    </View>
-  );
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -108,18 +74,6 @@ export default function ProfileScreen({navigation}) {
           <View style={styles.zoneBadge}>
             <Text style={styles.zoneText}>📍 {zoneLabel}</Text>
           </View>
-        </View>
-
-        {/* Pending Deposit */}
-        {pendingCard}
-
-        {/* UPI ID Section */}
-        <View style={styles.sectionCard}>
-          <Text style={styles.sectionTitle}>💳 UPI ID</Text>
-          <Text style={styles.sectionSub}>
-            Customer ko payment ke liye dikhayega
-          </Text>
-          <Text style={styles.upiValue}>{person?.upiId || 'Not set'}</Text>
         </View>
 
         {/* Stats */}
@@ -204,83 +158,6 @@ const styles = StyleSheet.create({
     borderColor: Colors.primaryBorder,
   },
   zoneText: {fontSize: 12, color: Colors.primary, fontWeight: '700'},
-  depositCard: {
-    backgroundColor: Colors.white,
-    borderRadius: 16,
-    padding: 18,
-    shadowColor: '#000',
-    shadowOffset: {width: 0, height: 2},
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  depositTitle: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: Colors.text,
-    marginBottom: 14,
-  },
-  depositRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 14,
-  },
-  depositItem: {flex: 1, alignItems: 'center', padding: 8},
-  depositDivider: {
-    width: 1,
-    height: 50,
-    backgroundColor: Colors.border,
-  },
-  depositIcon: {fontSize: 24, marginBottom: 4},
-  depositLabel: {fontSize: 11, color: Colors.textMuted},
-  depositAmount: {
-    fontSize: 22,
-    fontWeight: '900',
-    marginTop: 4,
-  },
-  totalPendingBox: {
-    backgroundColor: Colors.redPale,
-    borderRadius: 12,
-    padding: 14,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#FFCDD2',
-  },
-  totalPendingLabel: {
-    fontSize: 12,
-    color: Colors.red,
-    fontWeight: '700',
-  },
-  totalPendingAmount: {
-    fontSize: 28,
-    fontWeight: '900',
-    color: Colors.red,
-    marginTop: 4,
-  },
-  depositHint: {
-    fontSize: 11,
-    color: Colors.textMuted,
-    textAlign: 'center',
-    marginTop: 10,
-  },
-  sectionCard: {
-    backgroundColor: Colors.white,
-    borderRadius: 16,
-    padding: 18,
-    shadowColor: '#000',
-    shadowOffset: {width: 0, height: 2},
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  sectionTitle: {fontSize: 14, fontWeight: '800', color: Colors.text},
-  sectionSub: {
-    fontSize: 12,
-    color: Colors.textMuted,
-    marginTop: 2,
-    marginBottom: 12,
-  },
-  upiValue: {fontSize: 16, fontWeight: '700', color: Colors.text},
   statsRow: {flexDirection: 'row', gap: 10},
   statCard: {
     flex: 1,

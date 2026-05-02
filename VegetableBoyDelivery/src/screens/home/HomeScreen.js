@@ -13,7 +13,11 @@ import {
 import {SafeAreaView} from 'react-native-safe-area-context';
 import {useFocusEffect} from '@react-navigation/native';
 import {Colors} from '../../theme/colors';
-import {deliveryOrderApi, deliveryAuthApi} from '../../services/api';
+import {
+  deliveryOrderApi,
+  deliveryAuthApi,
+  deliverySelfApi,
+} from '../../services/api';
 
 const statusConfig = {
   pending: {
@@ -45,12 +49,12 @@ export default function HomeScreen({navigation}) {
 
   const fetchData = async () => {
     try {
-      const [ordersData, personData] = await Promise.all([
+      const [ordersData, selfData] = await Promise.all([
         deliveryOrderApi.getOrders(),
-        deliveryAuthApi.getPerson(),
+        deliverySelfApi.getProfile(),
       ]);
       setOrders(ordersData);
-      setPerson(personData);
+      setPerson(selfData.person);
     } catch (err) {
       Alert.alert('Error', err.message || 'Failed to load orders');
     }
@@ -72,12 +76,6 @@ export default function HomeScreen({navigation}) {
   const delivered = orders.filter(o => o.status === 'delivered');
   const pending = orders.filter(o => o.status === 'pending');
   const failed = orders.filter(o => o.status === 'failed');
-  const totalCash = delivered
-    .filter(o => o.payment === 'cash')
-    .reduce((a, o) => a + o.total, 0);
-  const totalOnline = delivered
-    .filter(o => o.payment === 'online')
-    .reduce((a, o) => a + o.total, 0);
 
   const zoneLabel =
     person?.zones?.length > 0
@@ -110,14 +108,6 @@ export default function HomeScreen({navigation}) {
         <View style={styles.orderDivider} />
         <View style={styles.orderBottom}>
           <Text style={styles.orderMeta}>{item.items.length} items</Text>
-          <Text style={styles.orderAmount}>💰 ₹{item.total}</Text>
-          {item.payment && (
-            <View style={styles.paymentChip}>
-              <Text style={styles.paymentChipText}>
-                {item.payment === 'cash' ? '💵 Cash' : '📱 Online'}
-              </Text>
-            </View>
-          )}
           <Text style={styles.viewText}>View →</Text>
         </View>
       </TouchableOpacity>
@@ -269,39 +259,6 @@ export default function HomeScreen({navigation}) {
               ))}
             </View>
 
-            <View style={styles.collectionBox}>
-              <Text style={styles.collectionTitle}>💰 Collection Summary</Text>
-              <View style={styles.collectionRow}>
-                <View style={styles.collectionItem}>
-                  <Text style={styles.collectionIcon}>💵</Text>
-                  <Text style={styles.collectionLabel}>Cash Collected</Text>
-                  <Text
-                    style={[styles.collectionAmount, {color: Colors.green}]}>
-                    ₹{totalCash}
-                  </Text>
-                  <Text style={styles.collectionSub}>Submit to admin</Text>
-                </View>
-                <View style={styles.collectionDivider} />
-                <View style={styles.collectionItem}>
-                  <Text style={styles.collectionIcon}>📱</Text>
-                  <Text style={styles.collectionLabel}>Online Received</Text>
-                  <Text
-                    style={[styles.collectionAmount, {color: Colors.primary}]}>
-                    ₹{totalOnline}
-                  </Text>
-                  <Text style={styles.collectionSub}>Direct to company</Text>
-                </View>
-              </View>
-            </View>
-
-            {totalCash > 0 && (
-              <View style={styles.submitAlert}>
-                <Text style={styles.submitAlertText}>
-                  ⚠️ ₹{totalCash} cash admin ko submit karna hai!
-                </Text>
-              </View>
-            )}
-
             <TouchableOpacity
               style={styles.closeModalBtn}
               onPress={() => setShowSummary(false)}>
@@ -411,19 +368,6 @@ const styles = StyleSheet.create({
   orderDivider: {height: 1, backgroundColor: Colors.border, marginVertical: 10},
   orderBottom: {flexDirection: 'row', alignItems: 'center', gap: 8},
   orderMeta: {fontSize: 12, color: Colors.textMuted},
-  orderAmount: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: Colors.primary,
-    flex: 1,
-  },
-  paymentChip: {
-    backgroundColor: Colors.primaryPale,
-    borderRadius: 6,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-  },
-  paymentChipText: {fontSize: 10, color: Colors.primary, fontWeight: '600'},
   viewText: {fontSize: 12, color: Colors.primary, fontWeight: '700'},
   modalOverlay: {
     flex: 1,
@@ -465,42 +409,6 @@ const styles = StyleSheet.create({
   summaryStatIcon: {fontSize: 20, marginBottom: 4},
   summaryStatValue: {fontSize: 22, fontWeight: '900'},
   summaryStatLabel: {fontSize: 10, color: Colors.textMuted, marginTop: 2},
-  collectionBox: {
-    backgroundColor: Colors.bg,
-    borderRadius: 14,
-    padding: 16,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: Colors.border,
-  },
-  collectionTitle: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: Colors.textMid,
-    marginBottom: 14,
-    letterSpacing: 1,
-  },
-  collectionRow: {flexDirection: 'row', alignItems: 'center'},
-  collectionItem: {flex: 1, alignItems: 'center'},
-  collectionDivider: {width: 1, height: 60, backgroundColor: Colors.border},
-  collectionIcon: {fontSize: 24, marginBottom: 4},
-  collectionLabel: {fontSize: 11, color: Colors.textMuted},
-  collectionAmount: {fontSize: 26, fontWeight: '900', marginTop: 4},
-  collectionSub: {fontSize: 10, color: Colors.textMuted, marginTop: 2},
-  submitAlert: {
-    backgroundColor: Colors.greenPale,
-    borderRadius: 10,
-    padding: 12,
-    marginBottom: 14,
-    borderWidth: 1,
-    borderColor: Colors.greenBorder,
-  },
-  submitAlertText: {
-    fontSize: 12,
-    color: Colors.green,
-    fontWeight: '700',
-    textAlign: 'center',
-  },
   closeModalBtn: {
     backgroundColor: Colors.primary,
     borderRadius: 12,

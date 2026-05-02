@@ -19,6 +19,12 @@ export default function ProductDetailScreen({navigation, route}) {
   const [cart, setCart] = useState(route.params.cart || {});
   const [showNotif, setShowNotif] = useState(false);
 
+  const getPrice = variant => {
+    if (variant === '250g') return product.price250 || 0;
+    if (variant === '500g') return product.price500 || 0;
+    return product.price1kg || 0;
+  };
+
   const cartKey = `${product.id}_${selectedVariant}`;
   const qty = cart[cartKey] || 0;
 
@@ -84,23 +90,25 @@ export default function ProductDetailScreen({navigation, route}) {
           <Text style={styles.heroEmoji}>{product.emoji}</Text>
           <Text style={styles.heroName}>{product.name}</Text>
           <Text style={styles.heroCategory}>{product.category} Vegetable</Text>
-          {product.badge && (
-            <View
-              style={[styles.heroBadge, {backgroundColor: product.badgeColor}]}>
-              <Text style={styles.heroBadgeText}>{product.badge}</Text>
-            </View>
-          )}
         </View>
 
         {/* Price Info */}
         <View style={styles.priceBox}>
-          <Text style={styles.priceBoxTitle}>💡 Price Info</Text>
-          <Text style={styles.priceBoxDesc}>
-            Final price set by admin at delivery time.
-          </Text>
-          <Text style={styles.priceBoxSub}>
-            You'll get a notification when price is updated! 🔔
-          </Text>
+          <Text style={styles.priceBoxTitle}>💰 Today's Price</Text>
+          <View style={styles.priceRow}>
+            <View style={styles.priceItem}>
+              <Text style={styles.priceValue}>₹{product.price250 || 0}</Text>
+              <Text style={styles.priceLabel}>250g</Text>
+            </View>
+            <View style={styles.priceItem}>
+              <Text style={styles.priceValue}>₹{product.price500 || 0}</Text>
+              <Text style={styles.priceLabel}>500g</Text>
+            </View>
+            <View style={styles.priceItem}>
+              <Text style={styles.priceValue}>₹{product.price1kg || 0}</Text>
+              <Text style={styles.priceLabel}>1kg</Text>
+            </View>
+          </View>
         </View>
 
         {/* Variant Selection */}
@@ -121,6 +129,13 @@ export default function ProductDetailScreen({navigation, route}) {
                     selectedVariant === v && styles.variantTextActive,
                   ]}>
                   {v}
+                </Text>
+                <Text
+                  style={[
+                    styles.variantPrice,
+                    selectedVariant === v && styles.variantTextActive,
+                  ]}>
+                  ₹{getPrice(v)}
                 </Text>
               </TouchableOpacity>
             ))}
@@ -178,7 +193,9 @@ export default function ProductDetailScreen({navigation, route}) {
       <View style={styles.footer}>
         <TouchableOpacity style={styles.addBtn} onPress={handleAddToCart}>
           <Text style={styles.addBtnText}>
-            {qty > 0 ? `Added (${qty}) — Add More +` : '+ Add to Cart'}
+            {qty > 0
+              ? `Added (${qty}) — Add More +`
+              : `+ Add to Cart — ₹${getPrice(selectedVariant)}`}
           </Text>
         </TouchableOpacity>
       </View>
@@ -252,29 +269,31 @@ const styles = StyleSheet.create({
     marginTop: 12,
   },
   heroCategory: {fontSize: 13, color: Colors.textMuted, marginTop: 4},
-  heroBadge: {
-    marginTop: 10,
-    borderRadius: 20,
-    paddingHorizontal: 14,
-    paddingVertical: 5,
-  },
-  heroBadgeText: {fontSize: 12, color: Colors.white, fontWeight: '700'},
   priceBox: {
     margin: 16,
-    backgroundColor: Colors.accentPale,
+    backgroundColor: Colors.white,
     borderRadius: 12,
     padding: 14,
-    borderWidth: 1,
-    borderColor: '#FFE0B2',
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 2},
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
+    elevation: 2,
   },
   priceBoxTitle: {
     fontSize: 12,
     fontWeight: '700',
-    color: Colors.accent,
-    marginBottom: 4,
+    color: Colors.text,
+    marginBottom: 12,
   },
-  priceBoxDesc: {fontSize: 13, color: Colors.textMid},
-  priceBoxSub: {fontSize: 11, color: Colors.textMuted, marginTop: 4},
+  priceRow: {flexDirection: 'row', justifyContent: 'space-around'},
+  priceItem: {alignItems: 'center'},
+  priceValue: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: Colors.primary,
+  },
+  priceLabel: {fontSize: 11, color: Colors.textMuted, marginTop: 2},
   section: {marginHorizontal: 16, marginBottom: 16},
   sectionTitle: {
     fontSize: 14,
@@ -298,6 +317,12 @@ const styles = StyleSheet.create({
   },
   variantText: {fontSize: 15, fontWeight: '700', color: Colors.textMid},
   variantTextActive: {color: Colors.white},
+  variantPrice: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: Colors.primary,
+    marginTop: 4,
+  },
   qtyRow: {flexDirection: 'row', alignItems: 'center', gap: 16},
   qtyBtn: {
     width: 42,

@@ -25,7 +25,7 @@ export async function POST(request) {
 
     const person = await prisma.deliveryPerson.findUnique({
       where: { phone: phone.trim() },
-      include: { zones: true },
+      include: { zoneDeliveryPersons: { include: { zone: true } } },
     });
 
     if (!person || !person.password) {
@@ -57,7 +57,7 @@ export async function POST(request) {
         name: person.name,
         phone: person.phone,
         image: person.image,
-        zones: person.zones.map((z) => ({ id: z.id, name: z.name })),
+        zones: person.zoneDeliveryPersons.map((zdp) => zdp.zone).map((z) => ({ id: z.id, name: z.name })),
       },
     });
   } catch (error) {

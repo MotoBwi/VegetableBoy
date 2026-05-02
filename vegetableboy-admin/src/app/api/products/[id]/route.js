@@ -55,7 +55,7 @@ export async function PUT(request, { params }) {
     }
 
     const product = await prisma.product.update({
-      where: { id: Number(id) },
+      where: { id: id },
       data,
     });
     return NextResponse.json(product);
@@ -71,14 +71,14 @@ export async function DELETE(request, { params }) {
 
   try {
     const { id } = await params;
-    const orderItems = await prisma.orderItem.count({ where: { productId: Number(id) } });
+    const orderItems = await prisma.orderItem.count({ where: { productId: id } });
     if (orderItems > 0) {
       return NextResponse.json(
         { error: "Cannot delete product with existing orders!" },
         { status: 400 }
       );
     }
-    await prisma.product.delete({ where: { id: Number(id) } });
+    await prisma.product.delete({ where: { id: id } });
     return NextResponse.json({ message: "Product deleted!" });
   } catch (error) {
     console.error("Delete product error:", error);

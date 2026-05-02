@@ -14,7 +14,7 @@ async function requireDeliveryAuth(request) {
 
   const person = await prisma.deliveryPerson.findUnique({
     where: { id: decoded.deliveryPersonId },
-    include: { zones: true },
+    include: { zoneDeliveryPersons: { include: { zone: true } } },
   });
   if (!person) return { error: "Delivery person not found!", status: 404 };
   if (!person.active) return { error: "Account is deactivated!", status: 403 };
@@ -28,26 +28,23 @@ export async function GET(request) {
 
   try {
     const dp = auth.person;
-    const zoneIds = dp.zones.map((z) => z.id);
 
-    // Collected amounts from delivered orders
+    // Collected amounts from delivered orders assigned to this person
+    const deliveredOrders = await prisma.order.findMany({
+      where: {
+        deliveryPersonId: dp.id,
+        status: "delivered",
+      },
+      select: { payment: true, total: true, deliveryCharge: true },
+    });
+
     let cashCollected = 0;
     let onlineCollected = 0;
 
-    if (zoneIds.length > 0) {
-      const zoneOrderStats = await prisma.order.groupBy({
-        by: ["zoneId", "payment"],
-        where: {
-          zoneId: { in: zoneIds },
-          status: "delivered",
-        },
-        _sum: { total: true },
-      });
-
-      for (const stat of zoneOrderStats) {
-        if (stat.payment === "cash") cashCollected += stat._sum.total || 0;
-        if (stat.payment === "online") onlineCollected += stat._sum.total || 0;
-      }
+    for (const order of deliveredOrders) {
+      const amount = (order.total || 0) + (order.deliveryCharge || 0);
+      if (order.payment === "cash") cashCollected += amount;
+      if (order.payment === "online") onlineCollected += amount;
     }
 
     // Deposited amounts
@@ -79,8 +76,7 @@ export async function GET(request) {
         name: dp.name,
         phone: dp.phone,
         image: dp.image,
-        upiId: dp.upiId,
-        zones: dp.zones.map((z) => ({ id: z.id, name: z.name })),
+        zones: dp.zoneDeliveryPersons.map((zdp) => zdp.zone).map((z) => ({ id: z.id, name: z.name })),
       },
       stats: {
         cashCollected,

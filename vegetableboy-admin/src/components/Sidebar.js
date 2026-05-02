@@ -9,10 +9,10 @@ const NAV = [
   {href: '/dashboard', icon: 'Db', label: 'Dashboard'},
   {href: '/orders', icon: 'Or', label: 'Orders'},
   {href: '/orders/price', icon: 'Pr', label: 'Set Price'},
+  {href: '/failed-payments', icon: 'Fp', label: 'Failed Payments'},
   {href: '/products', icon: 'Pd', label: 'Products'},
   {href: '/users', icon: 'Us', label: 'Users'},
   {href: '/delivery', icon: 'Dl', label: 'Delivery'},
-  {href: '/delivery-payments', icon: 'Py', label: 'Payments'},
   {href: '/zones', icon: 'Zn', label: 'Zones'},
   {href: '/reports', icon: 'Rp', label: 'Reports'},
 ];
@@ -38,14 +38,15 @@ export default function Sidebar() {
     }
   };
 
+  // Hide sidebar on login page
+  if (pathname === '/login') return null;
+
   return (
-    <div className="w-56 bg-cream min-h-screen flex flex-col border-r border-rule">
+    <div className="w-56 bg-cream h-screen flex flex-col border-r border-rule sticky top-0 overflow-y-auto">
       {/* Logo */}
       <div className="p-5 border-b border-rule">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 bg-amber rounded-lg flex items-center justify-center text-xs font-bold text-ink tracking-wider">
-            VB
-          </div>
+          <img src="/logo.png" alt="Vegetable Boy" className="w-9 h-9 rounded-lg object-cover" />
           <div>
             <div className="text-ink text-sm font-serif tracking-wide leading-tight">Vegetable Boy</div>
             <div className="text-meta text-[10px] tracking-[0.2em] uppercase font-mono">Admin</div>
@@ -75,9 +76,7 @@ export default function Sidebar() {
       {/* Admin Info + Logout */}
       <div className="p-4 border-t border-rule">
         <div className="flex items-center gap-3 mb-3">
-          <div className="w-8 h-8 bg-amber rounded-full flex items-center justify-center text-xs font-bold text-ink">
-            A
-          </div>
+          <img src="/logo.png" alt="Vegetable Boy" className="w-8 h-8 rounded-full object-cover" />
           <div>
             <div className="text-ink text-sm font-bold font-mono">{adminName}</div>
             <div className="text-meta text-[10px] font-mono">Super Access</div>

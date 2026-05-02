@@ -9,6 +9,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   Alert,
+  Image,
 } from 'react-native';
 import {Colors} from '../../theme/colors';
 import {deliveryAuthApi} from '../../services/api';
@@ -20,11 +21,11 @@ export default function LoginScreen({navigation}) {
 
   const handleLogin = async () => {
     if (!phone || !password) {
-      Alert.alert('Error', 'Phone aur password dono bharo!');
+      Alert.alert('Error', 'Please enter both phone and password');
       return;
     }
     if (!/^\d{10}$/.test(phone.trim())) {
-      Alert.alert('Error', '10-digit phone number dalna hai!');
+      Alert.alert('Error', 'Please enter a 10-digit phone number');
       return;
     }
 
@@ -48,7 +49,7 @@ export default function LoginScreen({navigation}) {
       {/* Top Blue Section */}
       <View style={styles.topSection}>
         <View style={styles.avatarCircle}>
-          <Text style={styles.avatarEmoji}>🚴</Text>
+          <Image source={require('../../assets/logo.png')} style={styles.avatarImage} />
         </View>
         <Text style={styles.appName}>Vegetable Boy</Text>
         <Text style={styles.roleText}>DELIVERY PARTNER APP</Text>
@@ -58,9 +59,7 @@ export default function LoginScreen({navigation}) {
       {/* Form */}
       <View style={styles.formSection}>
         <Text style={styles.welcomeText}>Delivery Login 👋</Text>
-        <Text style={styles.subText}>
-          Apne delivery account mein login karo
-        </Text>
+        <Text style={styles.subText}>Log in to your delivery account</Text>
 
         <View style={styles.inputWrapper}>
           <Text style={styles.inputLabel}>📱 Phone Number</Text>
@@ -98,7 +97,7 @@ export default function LoginScreen({navigation}) {
 
         <View style={styles.infoBox}>
           <Text style={styles.infoText}>
-            🔐 Credentials admin ke dwara assign hote hain
+            🔐 Credentials are assigned by the admin
           </Text>
         </View>
       </View>
@@ -123,7 +122,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: 16,
   },
-  avatarEmoji: {fontSize: 48},
+  avatarImage: {width: 56, height: 56, borderRadius: 28},
   appName: {fontSize: 24, fontWeight: '800', color: Colors.white},
   roleText: {
     fontSize: 10,

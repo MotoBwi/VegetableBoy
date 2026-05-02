@@ -16,13 +16,33 @@ export async function PATCH(request, { params }) {
 
   try {
     const { id } = await params;
-    const numId = Number(id);
-    await prisma.$executeRaw`UPDATE DeliveryPerson SET active = NOT active WHERE id = ${numId}`;
-    const updated = await prisma.deliveryPerson.findUnique({ where: { id: numId }, include: { zones: true } });
-    if (!updated) {
+    const person = await prisma.deliveryPerson.findUnique({ where: { id } });
+    if (!person) {
       return NextResponse.json({ error: "Delivery person not found!" }, { status: 404 });
     }
-    return NextResponse.json(updated);
+    const newActive = !person.active;
+
+    await prisma.$transaction(async (tx) => {
+      await tx.deliveryPerson.update({
+        where: { id },
+        data: { active: newActive },
+      });
+
+      // Agar off duty ho raha hai, uske saare pending orders unassign kar do
+      if (!newActive) {
+        await tx.order.updateMany({
+          where: { deliveryPersonId: id, status: "pending" },
+          data: { deliveryPersonId: null },
+        });
+      }
+    });
+
+    const updated = await prisma.deliveryPerson.findUnique({
+      where: { id },
+      include: { zoneDeliveryPersons: { include: { zone: true } } },
+    });
+    const { password: _, ...safePerson } = updated;
+    return NextResponse.json(safePerson);
   } catch (error) {
     console.error("Toggle delivery person error:", error);
     return NextResponse.json({ error: "Failed to toggle!" }, { status: 500 });

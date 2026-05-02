@@ -21,30 +21,34 @@ export async function GET(request) {
     const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") || "50", 10)));
     const skip = (page - 1) * limit;
 
-    const [persons, total, zoneStatsRaw] = await Promise.all([
+    const [persons, total, orderStatsRaw] = await Promise.all([
       prisma.deliveryPerson.findMany({
-        include: { zones: true },
+        include: { zoneDeliveryPersons: { include: { zone: true } } },
         orderBy: { id: "asc" },
         skip,
         take: limit,
       }),
       prisma.deliveryPerson.count(),
-      prisma.order.groupBy({
-        by: ["zoneId", "status"],
-        _count: { id: true },
+      prisma.order.findMany({
+        where: { deliveryPersonId: { not: null } },
+        select: { deliveryPersonId: true, status: true },
       }),
     ]);
 
-    const zoneStats = new Map();
-    for (const stat of zoneStatsRaw) {
-      zoneStats.set(`${stat.zoneId}-${stat.status}`, stat._count.id);
+    const orderStats = new Map();
+    for (const order of orderStatsRaw) {
+      if (order.deliveryPersonId) {
+        const key = `${order.deliveryPersonId}-${order.status}`;
+        orderStats.set(key, (orderStats.get(key) || 0) + 1);
+      }
     }
 
     const enriched = persons.map((p) => {
-      const zoneIds = p.zones.map((z) => z.id);
-      const delivered = zoneIds.reduce((sum, zid) => sum + (zoneStats.get(`${zid}-delivered`) || 0), 0);
-      const pending = zoneIds.reduce((sum, zid) => sum + (zoneStats.get(`${zid}-pending`) || 0), 0);
-      return { ...p, delivered, pending };
+      const delivered = orderStats.get(`${p.id}-delivered`) || 0;
+      const pending = orderStats.get(`${p.id}-pending`) || 0;
+      const failed = orderStats.get(`${p.id}-failed`) || 0;
+      const { password: _, ...rest } = p;
+      return { ...rest, delivered, pending, failed };
     });
 
     return NextResponse.json({ persons: enriched, total, page, limit, totalPages: Math.ceil(total / limit) });
@@ -60,7 +64,7 @@ export async function POST(request) {
 
   try {
     const body = await request.json();
-    const { name, phone, password, image, zoneIds, active, upiId } = body;
+    const { name, phone, password, image, zoneIds, active } = body;
 
     if (!name || typeof name !== "string" || name.trim().length === 0 || name.trim().length > 100) {
       return NextResponse.json({ error: "Name is required and must be ≤100 chars!" }, { status: 400 });
@@ -71,7 +75,7 @@ export async function POST(request) {
     if (!password || typeof password !== "string" || password.length < 4) {
       return NextResponse.json({ error: "Password must be at least 4 characters!" }, { status: 400 });
     }
-    if (!Array.isArray(zoneIds) || zoneIds.length === 0 || zoneIds.some((id) => isNaN(Number(id)))) {
+    if (!Array.isArray(zoneIds) || zoneIds.length === 0 || zoneIds.some((id) => !id || typeof id !== 'string')) {
       return NextResponse.json({ error: "At least one valid zone is required!" }, { status: 400 });
     }
 
@@ -83,13 +87,17 @@ export async function POST(request) {
         phone: phone.trim(),
         password: hashedPassword,
         image: typeof image === "string" ? image.trim().slice(0, 500) : "",
-        upiId: typeof upiId === "string" ? upiId.trim().slice(0, 100) : "",
-        zones: { connect: zoneIds.map((id) => ({ id: Number(id) })) },
+        zoneDeliveryPersons: {
+          create: zoneIds.map((id) => ({
+            zone: { connect: { id } },
+          })),
+        },
         active: typeof active === "boolean" ? active : true,
       },
-      include: { zones: true },
+      include: { zoneDeliveryPersons: { include: { zone: true } } },
     });
-    return NextResponse.json({ ...person, delivered: 0, pending: 0 }, { status: 201 });
+    const { password: _p, ...safePerson } = person;
+    return NextResponse.json({ ...safePerson, delivered: 0, pending: 0 }, { status: 201 });
   } catch (error) {
     console.error("Create delivery person error:", error);
     return NextResponse.json({ error: "Failed to create delivery person!" }, { status: 500 });

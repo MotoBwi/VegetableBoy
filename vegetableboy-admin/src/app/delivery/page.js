@@ -9,7 +9,7 @@ export default function DeliveryPage() {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing] = useState(null);
-  const [newPerson, setNewPerson] = useState({ name: '', phone: '', password: '', image: '', upiId: '', zoneIds: [], delivered: 0, pending: 0 });
+  const [newPerson, setNewPerson] = useState({ name: '', phone: '', password: '', image: '', zoneIds: [], delivered: 0, pending: 0, failed: 0 });
 
   useEffect(() => {
     loadData();
@@ -32,7 +32,11 @@ export default function DeliveryPage() {
     try {
       const updated = await deliveryApi.toggle(id);
       setPersons(prev => prev.map(p => p.id === id ? { ...p, active: updated.active } : p));
-      toast.success(`${updated.name} ${updated.active ? 'on duty' : 'off duty'}!`);
+      if (!updated.active) {
+        toast.success(`${updated.name} off duty — unassigned orders ko Delivery Status mein dekh sakte ho!`);
+      } else {
+        toast.success(`${updated.name} on duty!`);
+      }
     } catch (err) {
       toast.error(err.message);
     }
@@ -61,19 +65,19 @@ export default function DeliveryPage() {
       return;
     }
     try {
-      const payload = { name: newPerson.name, phone: newPerson.phone, image: newPerson.image, upiId: newPerson.upiId, zoneIds: newPerson.zoneIds };
+      const payload = { name: newPerson.name, phone: newPerson.phone, image: newPerson.image, zoneIds: newPerson.zoneIds };
       if (newPerson.password) payload.password = newPerson.password;
       if (editing) {
         const updated = await deliveryApi.update(editing.id, payload);
-        setPersons(prev => prev.map(p => p.id === editing.id ? { ...updated, delivered: editing.delivered, pending: editing.pending } : p));
+        setPersons(prev => prev.map(p => p.id === editing.id ? { ...updated, delivered: editing.delivered, pending: editing.pending, failed: editing.failed } : p));
         toast.success(`${updated.name} updated!`);
         setEditing(null);
       } else {
         const created = await deliveryApi.create(payload);
-        setPersons(prev => [...prev, { ...created, delivered: 0, pending: 0 }]);
+        setPersons(prev => [...prev, { ...created, delivered: 0, pending: 0, failed: 0 }]);
         toast.success(`${created.name} added!`);
       }
-      setNewPerson({ name: '', phone: '', password: '', image: '', upiId: '', zoneIds: [], delivered: 0, pending: 0 });
+      setNewPerson({ name: '', phone: '', password: '', image: '', zoneIds: [], delivered: 0, pending: 0, failed: 0 });
       setShowModal(false);
     } catch (err) {
       toast.error(err.message);
@@ -82,8 +86,8 @@ export default function DeliveryPage() {
 
   const handleEdit = (person) => {
     setEditing(person);
-    const zoneIds = person.zones?.map(z => z.id) || [];
-    setNewPerson({ name: person.name, phone: person.phone, password: '', image: person.image || '', upiId: person.upiId || '', zoneIds, delivered: person.delivered, pending: person.pending });
+    const zoneIds = person.zoneDeliveryPersons?.map(zdp => zdp.zone.id) || [];
+    setNewPerson({ name: person.name, phone: person.phone, password: '', image: person.image || '', zoneIds, delivered: person.delivered, pending: person.pending, failed: person.failed });
     setShowModal(true);
   };
 
@@ -100,6 +104,7 @@ export default function DeliveryPage() {
 
   const totalDelivered = persons.reduce((a, p) => a + (p.delivered || 0), 0);
   const totalPending = persons.reduce((a, p) => a + (p.pending || 0), 0);
+  const totalFailed = persons.reduce((a, p) => a + (p.failed || 0), 0);
   const activeCount = persons.filter(p => p.active !== false).length;
 
   if (loading) return <div className="p-6 text-meta font-mono">Loading delivery persons...</div>;
@@ -111,18 +116,19 @@ export default function DeliveryPage() {
           <h1 className="text-2xl font-serif text-ink tracking-tight">Delivery</h1>
           <p className="text-meta text-sm mt-1 font-mono">Delivery boys manage karo</p>
         </div>
-        <button onClick={() => { setEditing(null); setNewPerson({ name: '', phone: '', password: '', image: '', upiId: '', zoneIds: [], delivered: 0, pending: 0 }); setShowModal(true); }}
+        <button onClick={() => { setEditing(null); setNewPerson({ name: '', phone: '', password: '', image: '', zoneIds: [], delivered: 0, pending: 0, failed: 0 }); setShowModal(true); }}
           className="bg-ink text-cream px-5 py-2.5 rounded-xl font-bold text-sm hover:bg-mid transition-all font-mono tracking-wide">
           + Add Delivery Boy
         </button>
       </div>
 
-      <div className="grid grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-5 gap-4 mb-6">
         {[
           { label: 'Total Boys', value: persons.length },
           { label: 'On Duty', value: activeCount },
           { label: 'Delivered', value: totalDelivered },
           { label: 'Pending', value: totalPending },
+          { label: 'Failed', value: totalFailed },
         ].map(s => (
           <div key={s.label} className="bg-surface rounded-2xl p-4 shadow-sm border border-rule">
             <div className="text-2xl font-serif text-ink tracking-tight">{s.value}</div>
@@ -134,7 +140,7 @@ export default function DeliveryPage() {
       <div className="bg-surface rounded-2xl shadow-sm overflow-hidden border border-rule">
         <table className="w-full">
           <thead><tr className="bg-cream">
-            {['Person', 'Phone', 'Zones', 'Delivered', 'Pending', 'Status', 'Actions'].map(h => (
+            {['Person', 'Phone', 'Zones', 'Delivered', 'Pending', 'Failed', 'Status', 'Actions'].map(h => (
               <th key={h} className="text-left px-5 py-3 text-[10px] font-bold text-meta uppercase tracking-wider font-mono">{h}</th>
             ))}
           </tr></thead>
@@ -156,8 +162,8 @@ export default function DeliveryPage() {
                 <td className="px-5 py-4 text-sm text-mid font-mono">{p.phone}</td>
                 <td className="px-5 py-4">
                   <div className="flex flex-wrap gap-1">
-                    {p.zones?.map(z => (
-                      <span key={z.id} className="text-[10px] bg-cream text-mid px-2 py-1 rounded-lg font-bold font-mono border border-rule">{z.name}</span>
+                    {p.zoneDeliveryPersons?.map(zdp => (
+                      <span key={zdp.zone.id} className="text-[10px] bg-cream text-mid px-2 py-1 rounded-lg font-bold font-mono border border-rule">{zdp.zone.name}</span>
                     )) || (
                       <span className="text-[10px] text-meta font-mono">—</span>
                     )}
@@ -165,6 +171,7 @@ export default function DeliveryPage() {
                 </td>
                 <td className="px-5 py-4 font-bold text-sm text-ink font-mono">{p.delivered || 0}</td>
                 <td className="px-5 py-4 font-bold text-sm text-amber font-mono">{p.pending || 0}</td>
+                <td className="px-5 py-4 font-bold text-sm text-red-500 font-mono">{p.failed || 0}</td>
                 <td className="px-5 py-4">
                   <button onClick={() => toggleStatus(p.id)} className={`px-3 py-1.5 rounded-full text-[10px] font-bold border font-mono ${p.active !== false ? 'bg-cream text-ink border-rule' : 'bg-rule/50 text-mid border-rule'}`}>
                     {p.active !== false ? 'On Duty' : 'Off Duty'}
@@ -205,10 +212,6 @@ export default function DeliveryPage() {
                 {newPerson.image && (
                   <img src={newPerson.image} alt="Preview" className="mt-2 w-16 h-16 rounded-full object-cover border border-rule" />
                 )}
-              </div>
-              <div>
-                <label className="text-[10px] font-bold text-mid mb-1 block uppercase tracking-wider font-mono">UPI ID</label>
-                <input value={newPerson.upiId} onChange={e => setNewPerson(p => ({ ...p, upiId: e.target.value }))} placeholder="e.g. name@upi" className="w-full px-4 py-2.5 border-2 border-rule rounded-xl text-sm text-ink outline-none focus:border-amber bg-cream font-mono" />
               </div>
               <div>
                 <label className="text-[10px] font-bold text-mid mb-1 block uppercase tracking-wider font-mono">Zones</label>

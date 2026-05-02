@@ -44,11 +44,12 @@ export default function DashboardPage() {
       </div>
 
       {/* Stat Cards */}
-      <div className="grid grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-5 gap-4 mb-6">
         <StatCard label="Total Orders Today" value={data.totalOrders} />
         <StatCard label="Delivered" value={data.delivered} />
         <StatCard label="Cash Collected" value={`Rs.${data.totalCash}`} sub="Pending submission" />
         <StatCard label="Online Received" value={`Rs.${data.totalOnline}`} sub="Direct to company" />
+        <StatCard label="Failed Payments" value={data.failedPayments || 0} sub="Needs attention" />
       </div>
 
       <div className="grid grid-cols-2 gap-6">
@@ -64,8 +65,8 @@ export default function DashboardPage() {
                   <div className="text-xs text-meta font-mono">{dp.zone}</div>
                 </div>
                 <div className="text-right">
-                  <div className="text-ink font-bold text-sm font-mono">{dp.delivered}</div>
-                  <div className="text-meta text-xs font-mono">{dp.pending} pending</div>
+                  <div className="text-ink font-bold text-sm font-mono">{dp.delivered} ✅</div>
+                  <div className="text-meta text-xs font-mono">{dp.pending} pending · {dp.failed || 0} failed</div>
                 </div>
               </div>
             ))}
@@ -79,6 +80,7 @@ export default function DashboardPage() {
             {[
               {label: "Set Today's Prices", href: '/orders/price'},
               {label: 'View All Orders', href: '/orders'},
+              {label: 'View Failed Payments', href: '/failed-payments'},
               {label: 'Add New User', href: '/users'},
               {label: 'Add New Product', href: '/products'},
               {label: 'View Reports', href: '/reports'},

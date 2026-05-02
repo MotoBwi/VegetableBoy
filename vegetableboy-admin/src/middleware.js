@@ -6,13 +6,17 @@ const PUBLIC_PATHS = [
   "/login",
   "/api/auth/login",
   "/api/auth/delivery-login",
+  "/api/auth/user-login",
   "/api/auth/seed",
 ];
 
-// Delivery APIs handle their own Bearer token auth
+// Delivery APIs and user APIs handle their own Bearer token auth
 function isPublicPath(pathname) {
   if (PUBLIC_PATHS.includes(pathname)) return true;
   if (pathname.startsWith("/api/delivery")) return true;
+  if (pathname.startsWith("/api/user")) return true;
+  if (pathname === "/api/products") return true;
+  if (pathname === "/api/auth/user-me") return true;
   return false;
 }
 
@@ -80,6 +84,7 @@ export async function middleware(request) {
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)",
+  matcher: [
+    "/((?!_next/static|_next/image|favicon.ico|logo.png|.*\\.(?:png|jpg|jpeg|svg|gif|webp|ico|css|js|woff|woff2)).*)",
   ],
 };

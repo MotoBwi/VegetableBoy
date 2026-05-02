@@ -16,12 +16,15 @@ export async function PATCH(request, { params }) {
 
   try {
     const { id } = await params;
-    const numId = Number(id);
-    await prisma.$executeRaw`UPDATE User SET active = NOT active WHERE id = ${numId}`;
-    const updated = await prisma.user.findUnique({ where: { id: numId }, include: { zone: true } });
-    if (!updated) {
+    const user = await prisma.user.findUnique({ where: { id } });
+    if (!user) {
       return NextResponse.json({ error: "User not found!" }, { status: 404 });
     }
+    const updated = await prisma.user.update({
+      where: { id },
+      data: { active: !user.active },
+      include: { zone: true },
+    });
     return NextResponse.json(updated);
   } catch (error) {
     console.error("Toggle user error:", error);

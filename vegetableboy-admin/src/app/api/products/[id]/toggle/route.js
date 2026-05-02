@@ -16,12 +16,14 @@ export async function PATCH(request, { params }) {
 
   try {
     const { id } = await params;
-    const numId = Number(id);
-    await prisma.$executeRaw`UPDATE Product SET available = NOT available WHERE id = ${numId}`;
-    const updated = await prisma.product.findUnique({ where: { id: numId } });
-    if (!updated) {
+    const product = await prisma.product.findUnique({ where: { id } });
+    if (!product) {
       return NextResponse.json({ error: "Product not found!" }, { status: 404 });
     }
+    const updated = await prisma.product.update({
+      where: { id },
+      data: { available: !product.available },
+    });
     return NextResponse.json(updated);
   } catch (error) {
     console.error("Toggle product error:", error);

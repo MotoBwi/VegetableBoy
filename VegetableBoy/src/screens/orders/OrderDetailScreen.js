@@ -10,15 +10,16 @@ import {
 import {SafeAreaView} from 'react-native-safe-area-context';
 import {Colors} from '../../theme/colors';
 
-const MOCK_ITEMS = [
-  {name: 'Hari Mirch', emoji: '🌶️', variant: '500g', qty: 2, price: '₹50'},
-  {name: 'Aloo', emoji: '🥔', variant: '1kg', qty: 1, price: '₹35'},
-  {name: 'Tamatar', emoji: '🍅', variant: '250g', qty: 3, price: '₹24'},
-];
-
 export default function OrderDetailScreen({navigation, route}) {
   const {order} = route.params;
   const isDelivered = order.status === 'delivered';
+  const isPaymentFailed = order.status === 'payment_failed';
+
+  const itemsTotal =
+    order.items?.reduce((sum, item) => {
+      const price = item.price || 0;
+      return sum + price * item.qty;
+    }, 0) || 0;
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -42,23 +43,45 @@ export default function OrderDetailScreen({navigation, route}) {
             {
               backgroundColor: isDelivered
                 ? Colors.primaryPale
+                : isPaymentFailed
+                ? Colors.redPale
                 : Colors.accentPale,
-              borderColor: isDelivered ? Colors.primaryBorder : '#FFE0B2',
+              borderColor: isDelivered
+                ? Colors.primaryBorder
+                : isPaymentFailed
+                ? '#FFCDD2'
+                : '#FFE0B2',
             },
           ]}>
-          <Text style={styles.statusEmoji}>{isDelivered ? '✅' : '⏳'}</Text>
+          <Text style={styles.statusEmoji}>
+            {isDelivered ? '✅' : isPaymentFailed ? '❌' : '⏳'}
+          </Text>
           <View>
             <Text
               style={[
                 styles.statusTitle,
-                {color: isDelivered ? Colors.primary : Colors.accent},
+                {
+                  color: isDelivered
+                    ? Colors.primary
+                    : isPaymentFailed
+                    ? Colors.red
+                    : Colors.accent,
+                },
               ]}>
-              {isDelivered ? 'Order Delivered!' : 'Price Update Pending'}
+              {isDelivered
+                ? 'Order Delivered!'
+                : isPaymentFailed
+                ? 'Payment Failed'
+                : 'Order Pending'}
             </Text>
             <Text style={styles.statusSub}>
               {isDelivered
-                ? `Delivered on ${order.date}`
-                : 'Admin price set karega aur notification aayega 🔔'}
+                ? `Delivered on ${new Date(order.createdAt).toLocaleDateString(
+                    'en-IN',
+                  )}`
+                : isPaymentFailed
+                ? 'Order was not placed. Please try again.'
+                : 'Your order will be assigned for delivery soon'}
             </Text>
           </View>
         </View>
@@ -66,14 +89,14 @@ export default function OrderDetailScreen({navigation, route}) {
         {/* Items */}
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Items Ordered</Text>
-          {MOCK_ITEMS.map((item, i) => (
+          {order.items?.map((item, i) => (
             <View
               key={i}
               style={[
                 styles.itemRow,
-                i < MOCK_ITEMS.length - 1 && styles.itemBorder,
+                i < order.items.length - 1 && styles.itemBorder,
               ]}>
-              <Text style={styles.itemEmoji}>{item.emoji}</Text>
+              <Text style={styles.itemEmoji}>{item.image ? '' : '🥗'}</Text>
               <View style={styles.itemInfo}>
                 <Text style={styles.itemName}>{item.name}</Text>
                 <Text style={styles.itemVariant}>
@@ -85,7 +108,7 @@ export default function OrderDetailScreen({navigation, route}) {
                   styles.itemPrice,
                   !isDelivered && {color: Colors.accent},
                 ]}>
-                {isDelivered ? item.price : 'Pending'}
+                {isDelivered ? `₹${(item.price || 0) * item.qty}` : 'Pending'}
               </Text>
             </View>
           ))}
@@ -99,26 +122,38 @@ export default function OrderDetailScreen({navigation, route}) {
             <Text
               style={[
                 styles.billValue,
-                !isDelivered && {color: Colors.accent},
+                !isDelivered && !isPaymentFailed && {color: Colors.accent},
               ]}>
-              {isDelivered ? '₹169' : 'Pending ⏳'}
+              {isDelivered || isPaymentFailed ? `₹${itemsTotal}` : 'Pending ⏳'}
             </Text>
           </View>
           <View style={styles.billRow}>
             <Text style={styles.billLabel}>Delivery Charge</Text>
-            <Text style={[styles.billValue, {color: Colors.primary}]}>₹15</Text>
+            <Text style={[styles.billValue, {color: Colors.primary}]}>
+              ₹{order.deliveryCharge || 15}
+            </Text>
           </View>
           <View style={styles.divider} />
           <View style={styles.billRow}>
             <Text style={styles.totalLabel}>Total</Text>
-            <Text style={styles.totalValue}>{order.total}</Text>
+            <Text style={styles.totalValue}>₹{order.total}</Text>
           </View>
           {isDelivered && (
             <View style={styles.paymentBox}>
               <Text style={styles.paymentText}>
-                {order.payment === 'Cash'
+                {order.payment === 'cash'
                   ? '💵 Paid via Cash'
-                  : '📱 Paid via Online UPI'}
+                  : order.payment === 'online'
+                  ? '📱 Paid via Online UPI'
+                  : '💳 Payment pending'}
+              </Text>
+            </View>
+          )}
+          {isPaymentFailed && (
+            <View
+              style={[styles.paymentBox, {backgroundColor: Colors.redPale}]}>
+              <Text style={[styles.paymentText, {color: Colors.red}]}>
+                ❌ Payment Failed — Order not placed
               </Text>
             </View>
           )}
@@ -129,7 +164,9 @@ export default function OrderDetailScreen({navigation, route}) {
           <Text style={styles.cardTitle}>Delivery Info</Text>
           <View style={styles.infoRow}>
             <Text style={styles.infoLabel}>📅 Date</Text>
-            <Text style={styles.infoValue}>{order.date}</Text>
+            <Text style={styles.infoValue}>
+              {new Date(order.createdAt).toLocaleDateString('en-IN')}
+            </Text>
           </View>
           <View style={styles.infoRow}>
             <Text style={styles.infoLabel}>⏰ Slot</Text>
@@ -137,9 +174,39 @@ export default function OrderDetailScreen({navigation, route}) {
           </View>
           <View style={styles.infoRow}>
             <Text style={styles.infoLabel}>📍 Zone</Text>
-            <Text style={styles.infoValue}>Block A — Sector 4</Text>
+            <Text style={styles.infoValue}>{order.zone || '—'}</Text>
           </View>
+          {order.deliveryPerson && (
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>🚚 Delivery Person</Text>
+              <Text style={styles.infoValue}>{order.deliveryPerson}</Text>
+            </View>
+          )}
         </View>
+
+        {/* Payment Failed Details */}
+        {isPaymentFailed && (
+          <View
+            style={[styles.card, {borderColor: Colors.red, borderWidth: 1}]}>
+            <Text style={styles.cardTitle}>Payment Details</Text>
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Razorpay Order ID</Text>
+              <Text style={styles.infoValue}>
+                {order.razorpayOrderId || '—'}
+              </Text>
+            </View>
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Failure Reason</Text>
+              <Text
+                style={[
+                  styles.infoValue,
+                  {color: Colors.red, flex: 1, textAlign: 'right'},
+                ]}>
+                {order.failureReason || 'Unknown'}
+              </Text>
+            </View>
+          </View>
+        )}
       </ScrollView>
     </SafeAreaView>
   );

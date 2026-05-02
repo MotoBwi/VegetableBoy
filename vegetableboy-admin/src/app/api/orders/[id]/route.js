@@ -20,7 +20,7 @@ export async function PUT(request, { params }) {
   try {
     const { id } = await params;
     const body = await request.json();
-    const { status, payment } = body;
+    const { status, payment, deliveryPersonId } = body;
 
     const data = {};
     if (status !== undefined) {
@@ -35,12 +35,34 @@ export async function PUT(request, { params }) {
       }
       data.payment = payment;
     }
+    if (deliveryPersonId !== undefined) {
+      if (deliveryPersonId === null) {
+        data.deliveryPersonId = null;
+      } else if (typeof deliveryPersonId === "string" && deliveryPersonId.length > 0) {
+        const dp = await prisma.deliveryPerson.findUnique({ where: { id: deliveryPersonId } });
+        if (!dp) {
+          return NextResponse.json({ error: "Delivery person not found!" }, { status: 400 });
+        }
+        data.deliveryPersonId = deliveryPersonId;
+      } else {
+        return NextResponse.json({ error: "Invalid deliveryPersonId!" }, { status: 400 });
+      }
+    }
 
     const order = await prisma.order.update({
       where: { id },
       data,
+      include: { user: true, zone: true, deliveryPerson: true, items: { include: { product: true } } },
     });
-    return NextResponse.json(order);
+    const deliveryCharge = order.deliveryCharge ?? 15;
+    const { password: _, ...safeDeliveryPerson } = order.deliveryPerson || {};
+    return NextResponse.json({
+      ...order,
+      deliveryPerson: safeDeliveryPerson,
+      subtotal: order.total,
+      deliveryCharge,
+      total: order.total + deliveryCharge,
+    });
   } catch (error) {
     console.error("Update order error:", error);
     return NextResponse.json({ error: "Failed to update order!" }, { status: 500 });

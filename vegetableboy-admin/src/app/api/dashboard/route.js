@@ -25,6 +25,7 @@ export async function GET(request) {
       persons,
       zones,
       recentOrdersRaw,
+      failedPayments,
     ] = await Promise.all([
       prisma.order.count(),
       prisma.order.count({ where: { status: "delivered" } }),
@@ -32,67 +33,87 @@ export async function GET(request) {
       prisma.order.count({ where: { status: "failed" } }),
       prisma.order.aggregate({
         where: { status: "delivered", payment: "cash" },
-        _sum: { total: true },
+        _sum: { total: true, deliveryCharge: true },
       }),
       prisma.order.aggregate({
         where: { status: "delivered", payment: "online" },
-        _sum: { total: true },
+        _sum: { total: true, deliveryCharge: true },
       }),
-      prisma.deliveryPerson.findMany({ include: { zones: true } }),
+      prisma.deliveryPerson.findMany({ include: { zoneDeliveryPersons: { include: { zone: true } } } }),
       prisma.zone.findMany(),
       prisma.order.findMany({
-        include: { user: true, zone: true, items: { include: { product: true } } },
+        include: { user: true, zone: true, items: true },
         orderBy: { createdAt: "desc" },
         take: 10,
       }),
+      prisma.paymentAttempt.count({ where: { status: "failed" } }),
     ]);
 
-    const zoneOrderStats = await prisma.order.groupBy({
-      by: ["zoneId", "status"],
-      _count: { id: true },
+    const allOrders = await prisma.order.findMany({
+      where: { deliveryPersonId: { not: null } },
+      select: { deliveryPersonId: true, status: true },
     });
 
-    const zoneStatsMap = new Map();
-    for (const stat of zoneOrderStats) {
-      const key = `${stat.zoneId}-${stat.status}`;
-      zoneStatsMap.set(key, stat._count.id);
+    const dpStatsMap = new Map();
+    for (const order of allOrders) {
+      if (order.deliveryPersonId) {
+        const key = `${order.deliveryPersonId}-${order.status}`;
+        dpStatsMap.set(key, (dpStatsMap.get(key) || 0) + 1);
+      }
     }
 
     const deliveryPersons = persons.map((dp) => {
-      const zoneIds = dp.zones.map((z) => z.id);
-      const deliveredCount = zoneIds.reduce((sum, zid) => sum + (zoneStatsMap.get(`${zid}-delivered`) || 0), 0);
-      const pendingCount = zoneIds.reduce((sum, zid) => sum + (zoneStatsMap.get(`${zid}-pending`) || 0), 0);
+      const deliveredCount = dpStatsMap.get(`${dp.id}-delivered`) || 0;
+      const pendingCount = dpStatsMap.get(`${dp.id}-pending`) || 0;
+      const failedCount = dpStatsMap.get(`${dp.id}-failed`) || 0;
       return {
         id: dp.id,
         name: dp.name,
-        zone: dp.zones.map((z) => z.name).join(", "),
+        zone: dp.zoneDeliveryPersons.map((zdp) => zdp.zone.name).join(", "),
         delivered: deliveredCount,
         pending: pendingCount,
+        failed: failedCount,
       };
     });
 
-    const recentOrders = recentOrdersRaw.map((o) => ({
-      id: o.id,
-      user: o.user.name,
-      zone: o.zone.name,
-      items: o.items.map((item) => ({
-        name: item.product.name,
-        image: item.product.image,
-        variant: item.variant,
-        qty: item.qty,
-      })),
-      total: o.total,
-      status: o.status,
-      payment: o.payment,
-    }));
+    const productIds = [...new Set(recentOrdersRaw.flatMap(o => o.items.map(i => i.productId)))];
+    const products = await prisma.product.findMany({
+      where: { id: { in: productIds } },
+      select: { id: true, name: true, image: true },
+    });
+    const productMap = new Map(products.map(p => [p.id, p]));
+
+    const recentOrders = recentOrdersRaw.map((o) => {
+      const dc = o.deliveryCharge ?? 15;
+      return {
+        id: o.id,
+        user: o.user.name,
+        zone: o.zone.name,
+        items: o.items.map((item) => {
+          const prod = productMap.get(item.productId);
+          return {
+            name: prod?.name || `Product ${item.productId.slice(-4)}`,
+            image: prod?.image || "",
+            variant: item.variant,
+            qty: item.qty,
+          };
+        }),
+        subtotal: o.total,
+        deliveryCharge: dc,
+        total: o.total + dc,
+        status: o.status,
+        payment: o.payment,
+      };
+    });
 
     return NextResponse.json({
       totalOrders,
       delivered,
       pending,
       failed,
-      totalCash: cashAgg._sum.total || 0,
-      totalOnline: onlineAgg._sum.total || 0,
+      failedPayments,
+      totalCash: (cashAgg._sum.total || 0) + (cashAgg._sum.deliveryCharge || 0),
+      totalOnline: (onlineAgg._sum.total || 0) + (onlineAgg._sum.deliveryCharge || 0),
       deliveryPersons,
       recentOrders,
     });

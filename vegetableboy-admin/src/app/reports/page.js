@@ -31,12 +31,13 @@ export default function ReportsPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-5 gap-4 mb-6">
         {[
           { label: 'Total Revenue', value: `Rs.${totalRevenue}`, sub: `${data.deliveredOrders || 0} delivered` },
           { label: 'Cash', value: `Rs.${totalCash}`, sub: 'Pending' },
           { label: 'Online', value: `Rs.${totalOnline}`, sub: 'Direct' },
           { label: 'Pending Rev', value: `Rs.${pendingRevenue}`, sub: 'Yet to deliver' },
+          { label: 'Delivery Charges', value: `Rs.${(data.deliveredOrders || 0) * 15}`, sub: 'Collected' },
         ].map(s => (
           <div key={s.label} className="bg-surface rounded-2xl p-5 shadow-sm border border-rule">
             <div className="text-2xl font-serif text-ink tracking-tight">{s.value}</div>

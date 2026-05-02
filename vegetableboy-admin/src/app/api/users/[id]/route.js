@@ -39,7 +39,7 @@ export async function PUT(request, { params }) {
     if (active !== undefined) data.active = active;
 
     const user = await prisma.user.update({
-      where: { id: Number(id) },
+      where: { id: id },
       data,
       include: { zone: true },
     });
@@ -57,8 +57,8 @@ export async function DELETE(request, { params }) {
   try {
     const { id } = await params;
     await prisma.$transaction([
-      prisma.order.deleteMany({ where: { userId: Number(id) } }),
-      prisma.user.delete({ where: { id: Number(id) } }),
+      prisma.order.deleteMany({ where: { userId: id } }),
+      prisma.user.delete({ where: { id: id } }),
     ]);
     return NextResponse.json({ message: "User deleted!" });
   } catch (error) {

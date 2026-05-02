@@ -86,6 +86,7 @@ export const orderApi = {
   create: (data) => api("/api/orders", { method: "POST", body: JSON.stringify(data) }),
   update: (id, data) => api(`/api/orders/${id}`, { method: "PUT", body: JSON.stringify(data) }),
   remove: (id) => api(`/api/orders/${id}`, { method: "DELETE" }),
+  reassign: (id, deliveryPersonId) => api(`/api/orders/${id}`, { method: "PUT", body: JSON.stringify({ deliveryPersonId }) }),
 };
 
 export const priceApi = {
@@ -109,4 +110,8 @@ export const paymentApi = {
 
 export const dashboardApi = {
   getStats: () => api("/api/dashboard"),
+};
+
+export const failedPaymentsApi = {
+  getAll: () => api("/api/failed-payments"),
 };
